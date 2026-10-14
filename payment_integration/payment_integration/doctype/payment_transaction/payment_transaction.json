@@ -1,0 +1,308 @@
+{
+ "actions": [],
+ "creation": "2026-10-14 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "status",
+  "provider_account",
+  "provider",
+  "environment",
+  "column_break_amount",
+  "amount",
+  "currency",
+  "payer",
+  "phone",
+  "email",
+  "section_reference",
+  "reference_doctype",
+  "reference_name",
+  "description",
+  "column_break_ref",
+  "merchant_reference",
+  "idempotency_key",
+  "section_provider",
+  "provider_request_id",
+  "provider_merchant_request_id",
+  "provider_receipt",
+  "payment_method",
+  "column_break_provider",
+  "redirect_url",
+  "failure_reason",
+  "completed_at",
+  "last_checked_at",
+  "check_count",
+  "section_fulfilment",
+  "fulfilment_status",
+  "fulfilment_attempts",
+  "fulfilment_error",
+  "section_events",
+  "events"
+ ],
+ "fields": [
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Initiated\nPending\nSuccessful\nFailed\nCancelled\nExpired",
+   "default": "Initiated",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "provider_account",
+   "fieldtype": "Link",
+   "label": "Provider Account",
+   "options": "Payment Provider Account",
+   "reqd": 1,
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Data",
+   "label": "Provider",
+   "fetch_from": "provider_account.provider",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "environment",
+   "fieldtype": "Data",
+   "label": "Environment",
+   "fetch_from": "provider_account.environment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_amount",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "options": "currency",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "payer",
+   "fieldtype": "Link",
+   "label": "Payer",
+   "options": "User",
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "label": "Phone",
+   "read_only": 1
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_reference",
+   "fieldtype": "Section Break",
+   "label": "Paying For"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference DocType",
+   "options": "DocType",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Name",
+   "options": "reference_doctype",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ref",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "merchant_reference",
+   "fieldtype": "Data",
+   "label": "Merchant Reference",
+   "unique": 1,
+   "read_only": 1,
+   "description": "Our reference sent to the provider (equals the document name)."
+  },
+  {
+   "fieldname": "idempotency_key",
+   "fieldtype": "Data",
+   "label": "Idempotency Key",
+   "unique": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_provider",
+   "fieldtype": "Section Break",
+   "label": "Provider Details"
+  },
+  {
+   "fieldname": "provider_request_id",
+   "fieldtype": "Data",
+   "label": "Provider Request ID",
+   "read_only": 1,
+   "search_index": 1,
+   "description": "Daraja CheckoutRequestID / Pesapal OrderTrackingId."
+  },
+  {
+   "fieldname": "provider_merchant_request_id",
+   "fieldtype": "Data",
+   "label": "Provider Merchant Request ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_receipt",
+   "fieldtype": "Data",
+   "label": "Provider Receipt",
+   "read_only": 1,
+   "in_list_view": 1,
+   "description": "M-Pesa receipt number / Pesapal confirmation code."
+  },
+  {
+   "fieldname": "payment_method",
+   "fieldtype": "Data",
+   "label": "Payment Method",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_provider",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "redirect_url",
+   "fieldtype": "Small Text",
+   "label": "Redirect URL",
+   "read_only": 1
+  },
+  {
+   "fieldname": "failure_reason",
+   "fieldtype": "Small Text",
+   "label": "Failure Reason",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_at",
+   "fieldtype": "Datetime",
+   "label": "Completed At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_checked_at",
+   "fieldtype": "Datetime",
+   "label": "Last Status Check",
+   "read_only": 1
+  },
+  {
+   "fieldname": "check_count",
+   "fieldtype": "Int",
+   "label": "Status Checks",
+   "default": "0",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_fulfilment",
+   "fieldtype": "Section Break",
+   "label": "Fulfilment"
+  },
+  {
+   "fieldname": "fulfilment_status",
+   "fieldtype": "Select",
+   "label": "Fulfilment Status",
+   "options": "Pending\nDone\nFailed\nNot Required",
+   "default": "Pending",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "fulfilment_attempts",
+   "fieldtype": "Int",
+   "label": "Fulfilment Attempts",
+   "default": "0",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fulfilment_error",
+   "fieldtype": "Small Text",
+   "label": "Fulfilment Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_events",
+   "fieldtype": "Section Break",
+   "label": "Event Log"
+  },
+  {
+   "fieldname": "events",
+   "fieldtype": "Table",
+   "label": "Events",
+   "options": "Payment Transaction Event",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-14 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Payment Integration",
+ "name": "Payment Transaction",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "format:PAY-{YYYY}-{#####}",
+ "naming_rule": "Expression",
+ "track_changes": 1,
+ "in_create": 1,
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 0,
+   "delete": 1
+  },
+  {
+   "role": "Payments Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 0
+  }
+ ]
+}

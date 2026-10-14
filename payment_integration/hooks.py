@@ -9,6 +9,7 @@ app_license = "mit"
 # ------------------
 
 # required_apps = []
+required_apps = ["common_utils"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -84,6 +85,8 @@ app_license = "mit"
 
 # before_install = "payment_integration.install.before_install"
 # after_install = "payment_integration.install.after_install"
+after_install = "payment_integration.install.after_install"
+after_migrate = "payment_integration.install.after_migrate"
 
 # Uninstallation
 # ------------
@@ -153,6 +156,14 @@ app_license = "mit"
 
 # Scheduled Tasks
 # ---------------
+
+# Reconcile pending payments (missed callbacks), expire stale ones and retry
+# failed fulfilment.
+scheduler_events = {
+	"cron": {
+		"*/5 * * * *": ["payment_integration.payment_integration.tasks.reconcile_pending"],
+	},
+}
 
 # scheduler_events = {
 # 	"all": [
