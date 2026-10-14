@@ -15,7 +15,6 @@ plug in through the `payment_integration_handlers` hook:
 	}
 """
 
-import hmac
 from urllib.parse import urlsplit
 
 import frappe
@@ -25,8 +24,15 @@ from frappe.utils import add_to_date, now_datetime
 from payment_integration.payment_integration.doctype.payment_transaction.payment_transaction import (
 	TERMINAL_STATUSES,
 )
-from payment_integration.payment_integration.providers import get_provider
-from payment_integration.payment_integration.providers.base import (
+from payment_integration.payment_integration.gateways import (
+	GATEWAYS,
+	gateway_meta,
+	get_gateway,
+	settings_doc,
+	settings_for,
+)
+from payment_integration.payment_integration.services import receipts
+from payment_integration.payment_integration.gateways.base import (
 	PENDING,
 	SUCCESSFUL,
 	ProviderError,
@@ -35,48 +41,49 @@ from payment_integration.payment_integration.providers.base import (
 )
 
 TXN = "Payment Transaction"
-ACCOUNT = "Payment Provider Account"
 # A second click within this window returns the same pending payment instead
 # of sending another STK prompt / creating another order.
 DUPLICATE_WINDOW_SECONDS = 120
 MAX_FULFILMENT_ATTEMPTS = 5
 
 
-# ── accounts ─────────────────────────────────────────────────────────────
+# ── gateways ─────────────────────────────────────────────────────────────
 
-def enabled_accounts() -> list[dict]:
-	"""Public checkout options: enabled accounts only, no credentials."""
-	rows = frappe.get_all(
-		ACCOUNT, filters={"enabled": 1},
-		fields=["name", "provider", "display_label", "currency", "environment", "is_default"],
-		order_by="is_default desc, provider asc, name asc",
-	)
-	return [{
-		"account": r.name,
-		"provider": r.provider,
-		"label": r.display_label or ("M-Pesa" if r.provider == "Daraja" else r.provider),
-		"currency": r.currency,
-		"environment": r.environment,
-		"requires_phone": r.provider == "Daraja",
-		"flow": "stk_push" if r.provider == "Daraja" else "redirect",
-	} for r in rows]
+def enabled_gateways() -> list[dict]:
+	"""Public checkout options: enabled gateways only, no credentials."""
+	doc = settings_doc()
+	options = []
+	for key, meta in GATEWAYS.items():
+		cfg = settings_for(key, doc=doc)
+		if not int(cfg.enabled or 0):
+			continue
+		options.append({
+			"gateway": key,
+			"label": cfg.display_label or meta["title"],
+			"currency": cfg.currency,
+			"environment": cfg.environment,
+			"requires_phone": meta["requires_phone"],
+			"flow": meta["flow"],
+			"icon": meta["icon"],
+			"_order": int(cfg.sort_order or 0),
+		})
+	options.sort(key=lambda o: (o.pop("_order"), o["label"]))
+	return options
 
 
-def resolve_account(account: str | None = None, provider: str | None = None):
-	"""Enabled account by name, or the default (else first) enabled one for a provider."""
-	if account:
-		doc = frappe.get_doc(ACCOUNT, account)
-	else:
-		filters = {"enabled": 1}
-		if provider:
-			filters["provider"] = provider
-		name = frappe.db.get_value(ACCOUNT, filters, "name", order_by="is_default desc, creation asc")
-		if not name:
-			frappe.throw(_("No enabled payment provider is configured"), frappe.ValidationError)
-		doc = frappe.get_doc(ACCOUNT, name)
-	if not doc.enabled:
-		frappe.throw(_("{0} payments are currently switched off").format(doc.display_label or doc.provider))
-	return doc
+def resolve_gateway(gateway: str | None = None):
+	"""Settings doc of the requested (or first enabled) gateway; must be on."""
+	if not gateway:
+		enabled = enabled_gateways()
+		if not enabled:
+			frappe.throw(_("No payment method is switched on"), frappe.ValidationError)
+		gateway = enabled[0]["gateway"]
+	gateway_meta(gateway)  # unknown key -> error
+	settings = settings_for(gateway)
+	if not settings.enabled:
+		frappe.throw(_("{0} payments are currently switched off").format(
+			settings.display_label or GATEWAYS[gateway]["title"]))
+	return settings
 
 
 def _handler(reference_doctype: str | None, event: str) -> list[str]:
@@ -98,13 +105,14 @@ def payment_details_for(reference_doctype: str, reference_name: str, user: str) 
 	return details
 
 
-def check_return_url(account, return_url: str | None) -> str | None:
+def check_return_url(settings, return_url: str | None) -> str | None:
 	"""Allow redirects only back to configured origins (prevents open redirects)."""
 	if not return_url:
 		return None
 	parts = urlsplit(return_url)
 	origin = f"{parts.scheme}://{parts.netloc}".lower()
-	allowed = {o.strip().rstrip("/").lower() for o in (account.allowed_return_origins or "").splitlines() if o.strip()}
+	allowed = {o.strip().rstrip("/").lower()
+			   for o in (settings.get("allowed_return_origins") or "").splitlines() if o.strip()}
 	site = urlsplit(frappe.utils.get_url())
 	allowed.add(f"{site.scheme}://{site.netloc}".lower())
 	if parts.scheme not in ("http", "https") or origin not in allowed:
@@ -114,20 +122,22 @@ def check_return_url(account, return_url: str | None) -> str | None:
 
 # ── creation ─────────────────────────────────────────────────────────────
 
-def create_payment(*, amount, currency=None, account=None, provider=None,
+def create_payment(*, amount, currency=None, gateway=None,
 				   reference_doctype=None, reference_name=None, payer=None,
 				   phone=None, email=None, description=None, idempotency_key=None,
 				   return_url=None) -> dict:
 	"""Create a transaction and start it with the gateway. Server-side only:
 	callers must compute `amount` themselves."""
-	acc = resolve_account(account, provider)
+	settings = resolve_gateway(gateway)
+	gateway = settings.gateway
 	amount = float(amount or 0)
-	currency = currency or acc.currency
+	currency = currency or settings.currency
 	if amount <= 0:
 		frappe.throw(_("Amount must be greater than zero"))
-	if currency != acc.currency:
-		frappe.throw(_("{0} is configured for {1}, not {2}").format(acc.name, acc.currency, currency))
-	return_url = check_return_url(acc, return_url)
+	if currency != settings.currency:
+		frappe.throw(_("{0} is set up for {1}, not {2}").format(
+			settings.display_label or gateway, settings.currency, currency))
+	return_url = check_return_url(settings, return_url)
 
 	if idempotency_key:
 		existing = frappe.db.get_value(TXN, {"idempotency_key": idempotency_key}, "name")
@@ -136,7 +146,7 @@ def create_payment(*, amount, currency=None, account=None, provider=None,
 	if reference_doctype and reference_name and payer:
 		recent = frappe.db.get_value(TXN, {
 			"reference_doctype": reference_doctype, "reference_name": reference_name,
-			"payer": payer, "provider_account": acc.name, "status": PENDING,
+			"payer": payer, "provider": gateway, "status": PENDING,
 			"amount": amount,
 			"creation": (">=", add_to_date(now_datetime(), seconds=-DUPLICATE_WINDOW_SECONDS)),
 		}, "name")
@@ -145,7 +155,7 @@ def create_payment(*, amount, currency=None, account=None, provider=None,
 
 	txn = frappe.new_doc(TXN)
 	txn.update({
-		"provider_account": acc.name, "status": "Initiated", "amount": amount,
+		"provider": gateway, "environment": settings.environment, "status": "Initiated", "amount": amount,
 		"currency": currency, "reference_doctype": reference_doctype,
 		"reference_name": reference_name, "payer": payer, "phone": phone,
 		"email": email, "description": description,
@@ -160,7 +170,7 @@ def create_payment(*, amount, currency=None, account=None, provider=None,
 	if payer and payer != "Guest":
 		txn.payer_name = frappe.db.get_value("User", payer, "full_name")
 	try:
-		started = get_provider(acc).initiate(txn, return_url=return_url)
+		started = get_gateway(settings).initiate(txn, return_url=return_url)
 	except ProviderError as e:
 		_append_event(txn, "initiate", "Initiated", "Failed", str(e), e.payload)
 		txn.status = "Failed"
@@ -233,6 +243,7 @@ def apply_result(name: str, result: ProviderResult, source: str, *, receipt_hint
 	if after == SUCCESSFUL:
 		txn.completed_at = now_datetime()
 		txn.failure_reason = None
+		receipts.assign_number(txn)
 	elif after in TERMINAL_STATUSES:
 		txn.completed_at = now_datetime()
 		txn.failure_reason = message
@@ -242,6 +253,8 @@ def apply_result(name: str, result: ProviderResult, source: str, *, receipt_hint
 
 	if after == SUCCESSFUL:
 		_fulfil(txn)
+		if txn.receipt_number:
+			receipts.queue(txn.name)
 	elif after in TERMINAL_STATUSES:
 		_notify_failure(txn)
 	frappe.db.commit()
@@ -254,7 +267,7 @@ def refresh_status(name: str, source: str = "query", **hints) -> str:
 	if txn.status in TERMINAL_STATUSES:
 		return txn.status
 	try:
-		result = get_provider(txn.provider_account).query_status(txn)
+		result = get_gateway(txn.provider).query_status(txn)
 	except ProviderError as e:
 		frappe.db.set_value(TXN, name, {"last_checked_at": now_datetime(),
 										 "check_count": (txn.check_count or 0) + 1},
@@ -318,29 +331,21 @@ def retry_fulfilment(name: str) -> str:
 
 # ── callbacks ────────────────────────────────────────────────────────────
 
-def account_for_callback(callback_id: str, token: str, ip: str | None):
-	"""Authenticate a callback: known callback_id + matching secret token
-	(+ IP allowlist when configured). Returns the account doc or None."""
-	if not callback_id or not token:
+def handle_callback(gateway: str, params: dict, body: dict, *, raw_body: bytes = b"",
+					headers=None, ip: str | None = None) -> dict | None:
+	"""Authenticate a gateway callback, record it, then confirm the status
+	with the gateway. Returns the acknowledgement body, or None when the
+	callback is not authentic (caller answers 403)."""
+	settings = settings_for(gateway)
+	adapter = get_gateway(settings)
+	if not adapter.authenticate_callback(params, raw_body, headers or {}):
 		return None
-	name = frappe.db.get_value(ACCOUNT, {"callback_id": callback_id}, "name")
-	if not name:
-		return None
-	acc = frappe.get_doc(ACCOUNT, name)
-	expected = acc.get_password("callback_token", raise_exception=False) or ""
-	if not expected or not hmac.compare_digest(expected, token):
-		return None
-	allow = [i.strip() for i in (acc.callback_ip_allowlist or "").splitlines() if i.strip()]
+	allow = [i.strip() for i in (settings.get("callback_ip_allowlist") or "").splitlines() if i.strip()]
 	if allow and ip not in allow:
 		return None
-	return acc
 
-
-def handle_callback(acc, params: dict, body: dict) -> dict:
-	"""Record a callback, then confirm the status with the gateway. Returns the
-	acknowledgement body the provider expects."""
-	info = get_provider(acc).parse_callback(params, body)
-	filters = {"provider_account": acc.name}
+	info = adapter.parse_callback(params, body)
+	filters = {"provider": gateway}
 	if info.provider_request_id:
 		filters["provider_request_id"] = info.provider_request_id
 	elif info.merchant_reference:
@@ -349,8 +354,7 @@ def handle_callback(acc, params: dict, body: dict) -> dict:
 		return info.ack
 	name = frappe.db.get_value(TXN, filters, "name")
 	if not name:
-		frappe.log_error(to_json({"params": params, "body": body}),
-						 f"{acc.provider} callback for unknown payment")
+		frappe.log_error(to_json({"params": params, "body": body}), f"{gateway} callback for unknown payment")
 		return info.ack
 	if info.receipt:
 		# Daraja only reveals the receipt here (the status query omits it), so
@@ -373,11 +377,13 @@ def transaction_view(name: str) -> dict:
 	t = frappe.get_doc(TXN, name)
 	return {
 		"name": t.name, "status": t.status, "provider": t.provider,
-		"provider_account": t.provider_account, "amount": t.amount, "currency": t.currency,
+		"amount": t.amount, "currency": t.currency,
 		"reference_doctype": t.reference_doctype, "reference_name": t.reference_name,
 		"receipt": t.provider_receipt, "payment_method": t.payment_method,
 		"failure_reason": t.failure_reason if t.status != SUCCESSFUL else None,
 		"redirect_url": t.redirect_url if t.status == PENDING else None,
 		"fulfilment_status": t.fulfilment_status,
+		"receipt_number": t.receipt_number,
+		"receipt_download_path": receipts.DOWNLOAD_PATH + t.name if t.receipt_number else None,
 		"created": str(t.creation), "completed_at": str(t.completed_at) if t.completed_at else None,
 	}

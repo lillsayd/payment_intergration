@@ -9,7 +9,14 @@ from payment_integration.payment_integration.services import payments
 TXN = "Payment Transaction"
 BATCH = 100
 # How long a payment may stay open before it is expired.
-EXPIRE_AFTER_MINUTES = {"Daraja": 120, "Pesapal": 48 * 60}
+EXPIRE_AFTER_MINUTES = {
+	"Daraja": 120,           # STK prompts time out within minutes
+	"Pesapal": 48 * 60,
+	"Stripe": 25 * 60,       # Checkout Sessions expire after 24 h
+	"PayPal": 72 * 60,       # approved orders can be captured for 3 days
+	"Flutterwave": 48 * 60,
+	"Paystack": 48 * 60,
+}
 INITIATED_EXPIRE_MINUTES = 30
 
 
@@ -54,7 +61,7 @@ def _due(row, now) -> bool:
 
 
 def _expire(name: str, reason: str):
-	from payment_integration.payment_integration.providers.base import EXPIRED, ProviderResult
+	from payment_integration.payment_integration.gateways.base import EXPIRED, ProviderResult
 
 	try:
 		payments.apply_result(name, ProviderResult(status=EXPIRED, reason=reason), "reconcile")

@@ -5,7 +5,6 @@
  "engine": "InnoDB",
  "field_order": [
   "status",
-  "provider_account",
   "provider",
   "environment",
   "column_break_amount",
@@ -32,6 +31,11 @@
   "completed_at",
   "last_checked_at",
   "check_count",
+  "section_receipt",
+  "receipt_number",
+  "receipt_issued_on",
+  "column_break_receipt",
+  "receipt_file",
   "section_fulfilment",
   "fulfilment_status",
   "fulfilment_attempts",
@@ -52,27 +56,18 @@
    "search_index": 1
   },
   {
-   "fieldname": "provider_account",
-   "fieldtype": "Link",
-   "label": "Provider Account",
-   "options": "Payment Provider Account",
-   "reqd": 1,
-   "in_standard_filter": 1,
-   "read_only": 1
-  },
-  {
    "fieldname": "provider",
    "fieldtype": "Data",
-   "label": "Provider",
-   "fetch_from": "provider_account.provider",
+   "label": "Gateway",
    "read_only": 1,
-   "in_list_view": 1
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1
   },
   {
    "fieldname": "environment",
    "fieldtype": "Data",
-   "label": "Environment",
-   "fetch_from": "provider_account.environment",
+   "label": "Mode",
    "read_only": 1
   },
   {
@@ -231,6 +226,36 @@
    "read_only": 1
   },
   {
+   "fieldname": "section_receipt",
+   "fieldtype": "Section Break",
+   "label": "Receipt"
+  },
+  {
+   "fieldname": "receipt_number",
+   "fieldtype": "Data",
+   "label": "Receipt Number",
+   "unique": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "receipt_issued_on",
+   "fieldtype": "Datetime",
+   "label": "Receipt Issued On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_receipt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "receipt_file",
+   "fieldtype": "Attach",
+   "label": "Receipt PDF",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_fulfilment",
    "fieldtype": "Section Break",
    "label": "Fulfilment"
@@ -272,7 +297,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-14 12:00:00.000000",
+ "modified": "2026-10-14 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "Payment Integration",
  "name": "Payment Transaction",

@@ -10,14 +10,14 @@ import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from payment_integration.payment_integration.providers.base import (
+from payment_integration.payment_integration.gateways.base import (
 	CANCELLED,
 	EXPIRED,
 	FAILED,
 	PENDING,
 	SUCCESSFUL,
 	CallbackInfo,
-	PaymentProvider,
+	PaymentGateway,
 	ProviderError,
 	ProviderResult,
 )
@@ -45,20 +45,35 @@ def normalize_phone(phone: str) -> str:
 	return digits
 
 
-class DarajaProvider(PaymentProvider):
-	name = "Daraja"
+class DarajaGateway(PaymentGateway):
+	key = "Daraja"
 	live_url = "https://api.safaricom.co.ke"
 	sandbox_url = "https://sandbox.safaricom.co.ke"
+
+	def validate_settings(self):
+		import frappe
+
+		if (self.settings.currency or "KES") != "KES":
+			frappe.throw("M-Pesa (Daraja) only supports KES")
 
 	def error_message(self, data: dict) -> str:
 		return str(data.get("errorMessage") or data.get("ResultDesc") or data.get("raw") or data)[:300]
 
 	def fetch_access_token(self):
-		data = self.http(
-			"GET", "/oauth/v1/generate",
-			params={"grant_type": "client_credentials"},
-			auth=(self.account.daraja_consumer_key or "", self.secret("daraja_consumer_secret")),
-		)
+		try:
+			data = self.http(
+				"GET", "/oauth/v1/generate",
+				params={"grant_type": "client_credentials"},
+				auth=(self.settings.consumer_key or "", self.secret("consumer_secret")),
+			)
+		except ProviderError as e:
+			if "HTTP 400" in str(e) or "HTTP 401" in str(e):
+				# Safaricom answers bad credentials with an empty 400.
+				raise ProviderError(
+					"Safaricom rejected the Consumer Key/Secret. Copy them from your app on "
+					f"developer.safaricom.co.ke ({'production' if self.is_live else 'sandbox'} app)."
+				) from None
+			raise
 		token = data.get("access_token")
 		if not token:
 			raise ProviderError("Daraja did not return an access token")
@@ -70,8 +85,8 @@ class DarajaProvider(PaymentProvider):
 	def _password(self):
 		"""Daraja expects the timestamp in Kenyan local time."""
 		ts = datetime.now(ZoneInfo("Africa/Nairobi")).strftime("%Y%m%d%H%M%S")
-		shortcode = self.account.daraja_shortcode
-		raw = f"{shortcode}{self.secret('daraja_passkey')}{ts}".encode()
+		shortcode = self.settings.shortcode
+		raw = f"{shortcode}{self.secret('passkey')}{ts}".encode()
 		return base64.b64encode(raw).decode(), ts
 
 	def initiate(self, txn, *, return_url=None):
@@ -80,12 +95,12 @@ class DarajaProvider(PaymentProvider):
 			raise ProviderError("M-Pesa amounts must be whole shillings (at least KES 1)")
 		phone = normalize_phone(txn.phone)
 		password, ts = self._password()
-		tx_type = self.account.daraja_transaction_type or "CustomerPayBillOnline"
-		party_b = self.account.daraja_shortcode
-		if tx_type == "CustomerBuyGoodsOnline" and self.account.daraja_party_b:
-			party_b = self.account.daraja_party_b
+		tx_type = self.settings.transaction_type or "CustomerPayBillOnline"
+		party_b = self.settings.shortcode
+		if tx_type == "CustomerBuyGoodsOnline" and self.settings.party_b:
+			party_b = self.settings.party_b
 		payload = {
-			"BusinessShortCode": self.account.daraja_shortcode,
+			"BusinessShortCode": self.settings.shortcode,
 			"Password": password,
 			"Timestamp": ts,
 			"TransactionType": tx_type,
@@ -93,7 +108,7 @@ class DarajaProvider(PaymentProvider):
 			"PartyA": phone,
 			"PartyB": party_b,
 			"PhoneNumber": phone,
-			"CallBackURL": self.callback_url("daraja"),
+			"CallBackURL": self.callback_url(),
 			"AccountReference": txn.name[-12:],  # max 12 chars, shown on the prompt
 			"TransactionDesc": (txn.description or "Payment")[:13],
 		}
@@ -121,7 +136,7 @@ class DarajaProvider(PaymentProvider):
 			data = self.http(
 				"POST", "/mpesa/stkpushquery/v1/query",
 				json={
-					"BusinessShortCode": self.account.daraja_shortcode,
+					"BusinessShortCode": self.settings.shortcode,
 					"Password": password,
 					"Timestamp": ts,
 					"CheckoutRequestID": txn.provider_request_id,

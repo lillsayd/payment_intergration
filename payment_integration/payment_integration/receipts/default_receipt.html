@@ -1,0 +1,72 @@
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+	html, body { margin: 0; padding: 0; }
+	body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #1f2937; }
+	.head { width: 100%; border-collapse: collapse; margin-bottom: 8mm; }
+	.head td { vertical-align: top; }
+	.logo { max-height: 18mm; max-width: 60mm; }
+	.org { font-size: 9pt; color: #4b5563; line-height: 1.5; }
+	.org b { font-size: 12pt; color: #111827; }
+	.title { text-align: right; }
+	.title h1 { margin: 0; font-size: 20pt; letter-spacing: 1px; color: #0f766e; }
+	.title .no { font-size: 11pt; margin-top: 1mm; }
+	.paid { display: inline-block; margin-top: 2mm; padding: 1mm 3mm; border: 0.4mm solid #059669; color: #059669;
+		font-weight: bold; letter-spacing: 1px; font-size: 9pt; }
+	.box { width: 100%; border-collapse: collapse; margin-bottom: 6mm; }
+	.box td { padding: 2mm 0; vertical-align: top; width: 50%; }
+	.label { font-size: 8pt; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px; }
+	.items { width: 100%; border-collapse: collapse; }
+	.items th { text-align: left; font-size: 8.5pt; text-transform: uppercase; color: #6b7280; border-bottom: 0.4mm solid #d1d5db; padding: 2mm 0; }
+	.items td { padding: 3mm 0; border-bottom: 0.2mm solid #e5e7eb; }
+	.num, .items th.num { text-align: right; }
+	.total td { border-bottom: none; font-size: 13pt; font-weight: bold; padding-top: 4mm; }
+	.meta { margin-top: 8mm; font-size: 9pt; color: #4b5563; line-height: 1.7; }
+	.footer { margin-top: 12mm; padding-top: 3mm; border-top: 0.2mm solid #e5e7eb; font-size: 9pt; color: #6b7280; text-align: center; }
+</style>
+</head>
+<body>
+	<table class="head"><tr>
+		<td>
+			{% if logo %}<img class="logo" src="{{ logo }}"><br>{% endif %}
+			<div class="org">
+				<b>{{ organization_name }}</b><br>
+				{% if organization_address %}{{ organization_address | replace("\n", "<br>") }}<br>{% endif %}
+				{% if organization_phone %}{{ organization_phone }}{% endif %}{% if organization_phone and organization_email %} &middot; {% endif %}{% if organization_email %}{{ organization_email }}{% endif %}
+				{% if tax_pin %}<br>PIN: {{ tax_pin }}{% endif %}
+			</div>
+		</td>
+		<td class="title">
+			<h1>RECEIPT</h1>
+			<div class="no">No. <b>{{ receipt_number }}</b></div>
+			<div class="org">Issued {{ issued_on }}</div>
+			<div class="paid">PAID</div>
+		</td>
+	</tr></table>
+
+	<table class="box"><tr>
+		<td>
+			<div class="label">Received from</div>
+			<b>{{ payer_name }}</b><br>
+			{% if payer_email %}{{ payer_email }}<br>{% endif %}
+			{% if payer_phone %}{{ payer_phone }}{% endif %}
+		</td>
+		<td>
+			<div class="label">Payment</div>
+			{{ provider }}{% if payment_method %} &middot; {{ payment_method }}{% endif %}<br>
+			{% if provider_receipt %}Ref: <b>{{ provider_receipt }}</b><br>{% endif %}
+			Paid {{ paid_on }}
+		</td>
+	</tr></table>
+
+	<table class="items">
+		<tr><th>Description</th><th class="num">Amount</th></tr>
+		<tr><td>{{ description or "Payment" }}</td><td class="num">{{ amount }}</td></tr>
+		<tr class="total"><td>Total paid</td><td class="num">{{ amount }}</td></tr>
+	</table>
+
+	<div class="meta">Transaction {{ transaction }}</div>
+	{% if footer %}<div class="footer">{{ footer }}</div>{% endif %}
+</body>
+</html>

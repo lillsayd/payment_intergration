@@ -5,6 +5,12 @@ app_description = "Payment gateway integrations (Safaricom Daraja, Pesapal and m
 app_email = "saidmbugua@gmail.com"
 app_license = "mit"
 
+# Register the payments permission + sidebar entry in common_utils registries
+# (idempotent; also re-run per request via auth_hooks for warm workers).
+from payment_integration.payment_integration.domains import register as _register_payment_domains  # noqa: E402
+
+_register_payment_domains()
+
 # Apps
 # ------------------
 
@@ -264,3 +270,4 @@ scheduler_events = {
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+auth_hooks = ["payment_integration.payment_integration.domains.ensure_registered"]

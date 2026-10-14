@@ -41,7 +41,7 @@ def _errors(fn_name: str, e: Exception):
 def list_providers(**kwargs):
 	"""Enabled checkout options (no credentials)."""
 	try:
-		return success_response(data={"providers": payments.enabled_accounts()})
+		return success_response(data={"providers": payments.enabled_gateways()})
 	except Exception as e:
 		return _errors("list_providers", e)
 
@@ -50,7 +50,7 @@ def list_providers(**kwargs):
 @jwt_required
 @rate_limit(limit=10, seconds=60)
 def initiate(**kwargs):
-	"""POST {reference_doctype, reference_name, account?|provider?, phone?, return_url?, idempotency_key?}"""
+	"""POST {reference_doctype, reference_name, gateway?, phone?, return_url?, idempotency_key?}"""
 	try:
 		user = frappe.session.user
 		if user == "Guest":
@@ -65,8 +65,7 @@ def initiate(**kwargs):
 			amount=details["amount"],
 			currency=details.get("currency"),
 			description=details.get("description"),
-			account=(data.get("account") or "").strip() or None,
-			provider=(data.get("provider") or "").strip() or None,
+			gateway=(data.get("gateway") or "").strip() or None,
 			reference_doctype=ref_dt,
 			reference_name=ref_name,
 			payer=user,
@@ -102,3 +101,34 @@ def get_status(**kwargs):
 		return success_response(data=payments.transaction_view(name))
 	except Exception as e:
 		return _errors("get_status", e)
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+@jwt_required
+def download_receipt(**kwargs):
+	"""?transaction= — protected PDF receipt. Payer or payments staff."""
+	from common_utils.pdf import send_pdf_response
+	from payment_integration.payment_integration.services import receipts
+
+	name = (parse_request_data(kwargs).get("transaction") or "").strip()
+	row = frappe.db.get_value("Payment Transaction", name, ["payer", "status", "receipt_number"], as_dict=True) if name else None
+	if not row or (row.payer != frappe.session.user and not _is_manager()):
+		frappe.throw(_("Receipt not found"), frappe.DoesNotExistError)
+	if row.status != "Successful" or not row.receipt_number:
+		frappe.throw(_("No receipt is available for this payment"), frappe.DoesNotExistError)
+	send_pdf_response(receipts.pdf_bytes(name), f"{row.receipt_number}.pdf")
+
+
+@frappe.whitelist(methods=["GET"])
+def preview_receipt():
+	"""Desk: sample receipt with the current settings (session auth)."""
+	frappe.only_for(("System Manager", "Payments Manager"))
+	from common_utils.pdf import render_protected_pdf, send_pdf_response
+	from payment_integration.payment_integration.services import receipts
+
+	s = receipts.settings()
+	content = render_protected_pdf(
+		s.receipt_html or receipts.default_receipt_html(), receipts.sample_context(s),
+		title="Sample receipt", page_size=s.receipt_page_size or "A4", orientation="Portrait",
+		margin_mm=12 if s.receipt_margin_mm is None else s.receipt_margin_mm)
+	send_pdf_response(content, "receipt-preview.pdf", inline=True)

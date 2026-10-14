@@ -1,0 +1,1096 @@
+{
+ "actions": [],
+ "creation": "2026-10-14 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "issingle": 1,
+ "field_order": [
+  "daraja_tab",
+  "daraja_intro",
+  "daraja_enabled",
+  "daraja_environment",
+  "daraja_column_break_status",
+  "daraja_display_label",
+  "daraja_currency",
+  "daraja_sort_order",
+  "daraja_section_credentials",
+  "daraja_consumer_key",
+  "daraja_consumer_secret",
+  "daraja_shortcode",
+  "daraja_column_break_credentials",
+  "daraja_passkey",
+  "daraja_transaction_type",
+  "daraja_party_b",
+  "daraja_section_callbacks",
+  "daraja_callback_base_url",
+  "daraja_callback_token",
+  "daraja_callback_ip_allowlist",
+  "daraja_section_status",
+  "daraja_last_tested_at",
+  "daraja_last_test_result",
+  "pesapal_tab",
+  "pesapal_intro",
+  "pesapal_enabled",
+  "pesapal_environment",
+  "pesapal_column_break_status",
+  "pesapal_display_label",
+  "pesapal_currency",
+  "pesapal_sort_order",
+  "pesapal_section_credentials",
+  "pesapal_consumer_key",
+  "pesapal_consumer_secret",
+  "pesapal_column_break_credentials",
+  "pesapal_country_code",
+  "pesapal_ipn_id",
+  "pesapal_ipn_url",
+  "pesapal_allowed_return_origins",
+  "pesapal_section_callbacks",
+  "pesapal_callback_base_url",
+  "pesapal_callback_token",
+  "pesapal_callback_ip_allowlist",
+  "pesapal_section_status",
+  "pesapal_last_tested_at",
+  "pesapal_last_test_result",
+  "stripe_tab",
+  "stripe_intro",
+  "stripe_enabled",
+  "stripe_environment",
+  "stripe_column_break_status",
+  "stripe_display_label",
+  "stripe_currency",
+  "stripe_sort_order",
+  "stripe_section_credentials",
+  "stripe_secret_key",
+  "stripe_column_break_credentials",
+  "stripe_webhook_secret",
+  "stripe_statement_descriptor",
+  "stripe_allowed_return_origins",
+  "stripe_section_callbacks",
+  "stripe_callback_base_url",
+  "stripe_callback_token",
+  "stripe_callback_ip_allowlist",
+  "stripe_section_status",
+  "stripe_last_tested_at",
+  "stripe_last_test_result",
+  "paypal_tab",
+  "paypal_intro",
+  "paypal_enabled",
+  "paypal_environment",
+  "paypal_column_break_status",
+  "paypal_display_label",
+  "paypal_currency",
+  "paypal_sort_order",
+  "paypal_section_credentials",
+  "paypal_client_id",
+  "paypal_client_secret",
+  "paypal_column_break_credentials",
+  "paypal_webhook_id",
+  "paypal_brand_name",
+  "paypal_allowed_return_origins",
+  "paypal_section_callbacks",
+  "paypal_callback_base_url",
+  "paypal_callback_token",
+  "paypal_callback_ip_allowlist",
+  "paypal_section_status",
+  "paypal_last_tested_at",
+  "paypal_last_test_result",
+  "flutterwave_tab",
+  "flutterwave_intro",
+  "flutterwave_enabled",
+  "flutterwave_environment",
+  "flutterwave_column_break_status",
+  "flutterwave_display_label",
+  "flutterwave_currency",
+  "flutterwave_sort_order",
+  "flutterwave_section_credentials",
+  "flutterwave_secret_key",
+  "flutterwave_secret_hash",
+  "flutterwave_column_break_credentials",
+  "flutterwave_payment_options",
+  "flutterwave_logo_url",
+  "flutterwave_allowed_return_origins",
+  "flutterwave_section_callbacks",
+  "flutterwave_callback_base_url",
+  "flutterwave_callback_token",
+  "flutterwave_callback_ip_allowlist",
+  "flutterwave_section_status",
+  "flutterwave_last_tested_at",
+  "flutterwave_last_test_result",
+  "paystack_tab",
+  "paystack_intro",
+  "paystack_enabled",
+  "paystack_environment",
+  "paystack_column_break_status",
+  "paystack_display_label",
+  "paystack_currency",
+  "paystack_sort_order",
+  "paystack_section_credentials",
+  "paystack_secret_key",
+  "paystack_column_break_credentials",
+  "paystack_channels",
+  "paystack_allowed_return_origins",
+  "paystack_section_callbacks",
+  "paystack_callback_base_url",
+  "paystack_callback_token",
+  "paystack_callback_ip_allowlist",
+  "paystack_section_status",
+  "paystack_last_tested_at",
+  "paystack_last_test_result",
+  "receipts_tab",
+  "receipts_enabled",
+  "email_receipts",
+  "receipt_prefix",
+  "column_break_receipts",
+  "receipt_page_size",
+  "receipt_margin_mm",
+  "section_org",
+  "organization_name",
+  "tax_pin",
+  "organization_email",
+  "organization_phone",
+  "column_break_org",
+  "organization_address",
+  "logo",
+  "section_design",
+  "receipt_html",
+  "receipt_footer"
+ ],
+ "fields": [
+  {
+   "fieldname": "daraja_tab",
+   "fieldtype": "Tab Break",
+   "label": "M-Pesa (Daraja)"
+  },
+  {
+   "fieldname": "daraja_intro",
+   "fieldtype": "HTML",
+   "options": "<p class='text-muted small'>Safaricom Daraja — M-Pesa STK Push (prompt on the payer's phone).</p>"
+  },
+  {
+   "fieldname": "daraja_enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "0",
+   "description": "Master switch. When off the gateway is hidden from checkout and refuses new payments; results for payments already started are still processed."
+  },
+  {
+   "fieldname": "daraja_environment",
+   "fieldtype": "Select",
+   "label": "Mode",
+   "options": "Sandbox\nLive",
+   "default": "Sandbox",
+   "mandatory_depends_on": "daraja_enabled"
+  },
+  {
+   "fieldname": "daraja_column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "daraja_display_label",
+   "fieldtype": "Data",
+   "label": "Checkout Label",
+   "default": "M-Pesa",
+   "description": "What payers see in the payment picker."
+  },
+  {
+   "fieldname": "daraja_currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "default": "KES",
+   "mandatory_depends_on": "daraja_enabled"
+  },
+  {
+   "fieldname": "daraja_sort_order",
+   "fieldtype": "Int",
+   "label": "Sort Order",
+   "default": "0",
+   "description": "Lower shows first in checkout."
+  },
+  {
+   "fieldname": "daraja_section_credentials",
+   "fieldtype": "Section Break",
+   "label": "Daraja API (Lipa Na M-Pesa Online)"
+  },
+  {
+   "fieldname": "daraja_consumer_key",
+   "fieldtype": "Data",
+   "label": "Consumer Key",
+   "mandatory_depends_on": "daraja_enabled"
+  },
+  {
+   "fieldname": "daraja_consumer_secret",
+   "fieldtype": "Password",
+   "label": "Consumer Secret",
+   "mandatory_depends_on": "daraja_enabled"
+  },
+  {
+   "fieldname": "daraja_shortcode",
+   "fieldtype": "Data",
+   "label": "Business Short Code",
+   "mandatory_depends_on": "daraja_enabled",
+   "description": "Paybill number, or the Head Office/store number for Buy Goods. Sandbox: 174379."
+  },
+  {
+   "fieldname": "daraja_column_break_credentials",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "daraja_passkey",
+   "fieldtype": "Password",
+   "label": "Lipa Na M-Pesa Passkey",
+   "mandatory_depends_on": "daraja_enabled"
+  },
+  {
+   "fieldname": "daraja_transaction_type",
+   "fieldtype": "Select",
+   "label": "Transaction Type",
+   "options": "CustomerPayBillOnline\nCustomerBuyGoodsOnline",
+   "default": "CustomerPayBillOnline"
+  },
+  {
+   "fieldname": "daraja_party_b",
+   "fieldtype": "Data",
+   "label": "Till Number",
+   "depends_on": "eval:doc.daraja_transaction_type=='CustomerBuyGoodsOnline'",
+   "description": "Till receiving Buy Goods payments. Defaults to the short code."
+  },
+  {
+   "fieldname": "daraja_section_callbacks",
+   "fieldtype": "Section Break",
+   "label": "Callbacks",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "daraja_callback_base_url",
+   "fieldtype": "Data",
+   "label": "Public Callback Base URL",
+   "description": "Public https origin the gateway can reach, e.g. https://lms.example.com. Empty = site URL. For local development use a tunnel (ngrok, cloudflared). Safaricom rejects callback URLs containing words like 'mpesa' or 'safaricom'."
+  },
+  {
+   "fieldname": "daraja_callback_token",
+   "fieldtype": "Password",
+   "label": "Callback Token",
+   "read_only": 1,
+   "description": "Auto-generated secret embedded in callback URLs; requests without it are rejected."
+  },
+  {
+   "fieldname": "daraja_callback_ip_allowlist",
+   "fieldtype": "Small Text",
+   "label": "Callback IP Allowlist",
+   "description": "Optional. One IP per line; callbacks from other IPs are rejected."
+  },
+  {
+   "fieldname": "daraja_section_status",
+   "fieldtype": "Section Break",
+   "label": "Connection Check",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "daraja_last_tested_at",
+   "fieldtype": "Datetime",
+   "label": "Last Tested At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "daraja_last_test_result",
+   "fieldtype": "Small Text",
+   "label": "Last Test Result",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pesapal_tab",
+   "fieldtype": "Tab Break",
+   "label": "Pesapal"
+  },
+  {
+   "fieldname": "pesapal_intro",
+   "fieldtype": "HTML",
+   "options": "<p class='text-muted small'>Pesapal hosted checkout — cards, M-Pesa, Airtel Money and bank.</p>"
+  },
+  {
+   "fieldname": "pesapal_enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "0",
+   "description": "Master switch. When off the gateway is hidden from checkout and refuses new payments; results for payments already started are still processed."
+  },
+  {
+   "fieldname": "pesapal_environment",
+   "fieldtype": "Select",
+   "label": "Mode",
+   "options": "Sandbox\nLive",
+   "default": "Sandbox",
+   "mandatory_depends_on": "pesapal_enabled"
+  },
+  {
+   "fieldname": "pesapal_column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pesapal_display_label",
+   "fieldtype": "Data",
+   "label": "Checkout Label",
+   "default": "Card / Mobile Money",
+   "description": "What payers see in the payment picker."
+  },
+  {
+   "fieldname": "pesapal_currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "default": "KES",
+   "mandatory_depends_on": "pesapal_enabled"
+  },
+  {
+   "fieldname": "pesapal_sort_order",
+   "fieldtype": "Int",
+   "label": "Sort Order",
+   "default": "0",
+   "description": "Lower shows first in checkout."
+  },
+  {
+   "fieldname": "pesapal_section_credentials",
+   "fieldtype": "Section Break",
+   "label": "Pesapal API 3.0"
+  },
+  {
+   "fieldname": "pesapal_consumer_key",
+   "fieldtype": "Data",
+   "label": "Consumer Key",
+   "mandatory_depends_on": "pesapal_enabled"
+  },
+  {
+   "fieldname": "pesapal_consumer_secret",
+   "fieldtype": "Password",
+   "label": "Consumer Secret",
+   "mandatory_depends_on": "pesapal_enabled"
+  },
+  {
+   "fieldname": "pesapal_column_break_credentials",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pesapal_country_code",
+   "fieldtype": "Data",
+   "label": "Billing Country Code",
+   "default": "KE"
+  },
+  {
+   "fieldname": "pesapal_ipn_id",
+   "fieldtype": "Data",
+   "label": "IPN ID",
+   "read_only": 1,
+   "description": "Registered automatically on first use."
+  },
+  {
+   "fieldname": "pesapal_ipn_url",
+   "fieldtype": "Small Text",
+   "label": "Registered IPN URL",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pesapal_allowed_return_origins",
+   "fieldtype": "Small Text",
+   "label": "Allowed Return URL Origins",
+   "description": "Origins payers may be sent back to after checkout, one per line (e.g. https://lms.example.com, http://localhost:3000). Empty = site URL only."
+  },
+  {
+   "fieldname": "pesapal_section_callbacks",
+   "fieldtype": "Section Break",
+   "label": "Callbacks",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "pesapal_callback_base_url",
+   "fieldtype": "Data",
+   "label": "Public Callback Base URL",
+   "description": "Public https origin the gateway can reach, e.g. https://lms.example.com. Empty = site URL. For local development use a tunnel (ngrok, cloudflared)."
+  },
+  {
+   "fieldname": "pesapal_callback_token",
+   "fieldtype": "Password",
+   "label": "Callback Token",
+   "read_only": 1,
+   "description": "Auto-generated secret embedded in callback URLs; requests without it are rejected."
+  },
+  {
+   "fieldname": "pesapal_callback_ip_allowlist",
+   "fieldtype": "Small Text",
+   "label": "Callback IP Allowlist",
+   "description": "Optional. One IP per line; callbacks from other IPs are rejected."
+  },
+  {
+   "fieldname": "pesapal_section_status",
+   "fieldtype": "Section Break",
+   "label": "Connection Check",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "pesapal_last_tested_at",
+   "fieldtype": "Datetime",
+   "label": "Last Tested At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pesapal_last_test_result",
+   "fieldtype": "Small Text",
+   "label": "Last Test Result",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stripe_tab",
+   "fieldtype": "Tab Break",
+   "label": "Stripe"
+  },
+  {
+   "fieldname": "stripe_intro",
+   "fieldtype": "HTML",
+   "options": "<p class='text-muted small'>Stripe Checkout — international cards, Apple Pay and Google Pay.</p>"
+  },
+  {
+   "fieldname": "stripe_enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "0",
+   "description": "Master switch. When off the gateway is hidden from checkout and refuses new payments; results for payments already started are still processed."
+  },
+  {
+   "fieldname": "stripe_environment",
+   "fieldtype": "Select",
+   "label": "Mode",
+   "options": "Test\nLive",
+   "default": "Test",
+   "mandatory_depends_on": "stripe_enabled"
+  },
+  {
+   "fieldname": "stripe_column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "stripe_display_label",
+   "fieldtype": "Data",
+   "label": "Checkout Label",
+   "default": "Card (Stripe)",
+   "description": "What payers see in the payment picker."
+  },
+  {
+   "fieldname": "stripe_currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "default": "USD",
+   "mandatory_depends_on": "stripe_enabled"
+  },
+  {
+   "fieldname": "stripe_sort_order",
+   "fieldtype": "Int",
+   "label": "Sort Order",
+   "default": "0",
+   "description": "Lower shows first in checkout."
+  },
+  {
+   "fieldname": "stripe_section_credentials",
+   "fieldtype": "Section Break",
+   "label": "Stripe API"
+  },
+  {
+   "fieldname": "stripe_secret_key",
+   "fieldtype": "Password",
+   "label": "Secret Key",
+   "mandatory_depends_on": "stripe_enabled",
+   "description": "sk_test_… in Test mode, sk_live_… in Live mode (or a restricted key with Checkout Sessions write access)."
+  },
+  {
+   "fieldname": "stripe_column_break_credentials",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "stripe_webhook_secret",
+   "fieldtype": "Password",
+   "label": "Webhook Signing Secret",
+   "mandatory_depends_on": "stripe_enabled",
+   "description": "whsec_… from the webhook endpoint you create in the Stripe dashboard (events: checkout.session.*)."
+  },
+  {
+   "fieldname": "stripe_statement_descriptor",
+   "fieldtype": "Data",
+   "label": "Statement Descriptor Suffix",
+   "length": 22,
+   "description": "Optional short text on card statements."
+  },
+  {
+   "fieldname": "stripe_allowed_return_origins",
+   "fieldtype": "Small Text",
+   "label": "Allowed Return URL Origins",
+   "description": "Origins payers may be sent back to after checkout, one per line (e.g. https://lms.example.com, http://localhost:3000). Empty = site URL only."
+  },
+  {
+   "fieldname": "stripe_section_callbacks",
+   "fieldtype": "Section Break",
+   "label": "Callbacks",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "stripe_callback_base_url",
+   "fieldtype": "Data",
+   "label": "Public Callback Base URL",
+   "description": "Public https origin the gateway can reach, e.g. https://lms.example.com. Empty = site URL. For local development use a tunnel (ngrok, cloudflared). Stripe webhooks are also verified by signature."
+  },
+  {
+   "fieldname": "stripe_callback_token",
+   "fieldtype": "Password",
+   "label": "Callback Token",
+   "read_only": 1,
+   "description": "Auto-generated secret embedded in callback URLs; requests without it are rejected."
+  },
+  {
+   "fieldname": "stripe_callback_ip_allowlist",
+   "fieldtype": "Small Text",
+   "label": "Callback IP Allowlist",
+   "description": "Optional. One IP per line; callbacks from other IPs are rejected."
+  },
+  {
+   "fieldname": "stripe_section_status",
+   "fieldtype": "Section Break",
+   "label": "Connection Check",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "stripe_last_tested_at",
+   "fieldtype": "Datetime",
+   "label": "Last Tested At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stripe_last_test_result",
+   "fieldtype": "Small Text",
+   "label": "Last Test Result",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paypal_tab",
+   "fieldtype": "Tab Break",
+   "label": "PayPal"
+  },
+  {
+   "fieldname": "paypal_intro",
+   "fieldtype": "HTML",
+   "options": "<p class='text-muted small'>PayPal Checkout (Orders API v2): PayPal balance, cards and Pay Later. PayPal does not support KES — use USD or another supported currency.</p>"
+  },
+  {
+   "fieldname": "paypal_enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "0",
+   "description": "Master switch. When off the gateway is hidden from checkout and refuses new payments; results for payments already started are still processed."
+  },
+  {
+   "fieldname": "paypal_environment",
+   "fieldtype": "Select",
+   "label": "Mode",
+   "options": "Sandbox\nLive",
+   "default": "Sandbox",
+   "mandatory_depends_on": "paypal_enabled"
+  },
+  {
+   "fieldname": "paypal_column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "paypal_display_label",
+   "fieldtype": "Data",
+   "label": "Checkout Label",
+   "default": "PayPal",
+   "description": "What payers see in the payment picker."
+  },
+  {
+   "fieldname": "paypal_currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "default": "USD",
+   "mandatory_depends_on": "paypal_enabled"
+  },
+  {
+   "fieldname": "paypal_sort_order",
+   "fieldtype": "Int",
+   "label": "Sort Order",
+   "default": "0",
+   "description": "Lower shows first in checkout."
+  },
+  {
+   "fieldname": "paypal_section_credentials",
+   "fieldtype": "Section Break",
+   "label": "PayPal REST API"
+  },
+  {
+   "fieldname": "paypal_client_id",
+   "fieldtype": "Data",
+   "label": "Client ID",
+   "mandatory_depends_on": "paypal_enabled",
+   "description": "From developer.paypal.com → Apps & Credentials (Sandbox or Live app)."
+  },
+  {
+   "fieldname": "paypal_client_secret",
+   "fieldtype": "Password",
+   "label": "Client Secret",
+   "mandatory_depends_on": "paypal_enabled"
+  },
+  {
+   "fieldname": "paypal_column_break_credentials",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "paypal_webhook_id",
+   "fieldtype": "Data",
+   "label": "Webhook ID",
+   "description": "Optional but recommended. Create a webhook for the URL below (events CHECKOUT.ORDER.APPROVED, PAYMENT.CAPTURE.*) and paste its ID; webhooks are verified with PayPal before use."
+  },
+  {
+   "fieldname": "paypal_brand_name",
+   "fieldtype": "Data",
+   "label": "Brand Name",
+   "description": "Shown on the PayPal page. Defaults to the organisation name."
+  },
+  {
+   "fieldname": "paypal_allowed_return_origins",
+   "fieldtype": "Small Text",
+   "label": "Allowed Return URL Origins",
+   "description": "Origins payers may be sent back to after checkout, one per line (e.g. https://lms.example.com, http://localhost:3000). Empty = site URL only."
+  },
+  {
+   "fieldname": "paypal_section_callbacks",
+   "fieldtype": "Section Break",
+   "label": "Callbacks",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "paypal_callback_base_url",
+   "fieldtype": "Data",
+   "label": "Public Callback Base URL",
+   "description": "Public https origin the gateway can reach, e.g. https://lms.example.com. Empty = site URL. For local development use a tunnel (ngrok, cloudflared). Stripe webhooks are also verified by signature."
+  },
+  {
+   "fieldname": "paypal_callback_token",
+   "fieldtype": "Password",
+   "label": "Callback Token",
+   "read_only": 1,
+   "description": "Auto-generated secret embedded in callback URLs; requests without it are rejected."
+  },
+  {
+   "fieldname": "paypal_callback_ip_allowlist",
+   "fieldtype": "Small Text",
+   "label": "Callback IP Allowlist",
+   "description": "Optional. One IP per line; callbacks from other IPs are rejected."
+  },
+  {
+   "fieldname": "paypal_section_status",
+   "fieldtype": "Section Break",
+   "label": "Connection Check",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "paypal_last_tested_at",
+   "fieldtype": "Datetime",
+   "label": "Last Tested At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paypal_last_test_result",
+   "fieldtype": "Small Text",
+   "label": "Last Test Result",
+   "read_only": 1
+  },
+  {
+   "fieldname": "flutterwave_tab",
+   "fieldtype": "Tab Break",
+   "label": "Flutterwave"
+  },
+  {
+   "fieldname": "flutterwave_intro",
+   "fieldtype": "HTML",
+   "options": "<p class='text-muted small'>Flutterwave Standard checkout: cards, M-Pesa, Airtel Money and mobile money across Africa.</p>"
+  },
+  {
+   "fieldname": "flutterwave_enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "0",
+   "description": "Master switch. When off the gateway is hidden from checkout and refuses new payments; results for payments already started are still processed."
+  },
+  {
+   "fieldname": "flutterwave_environment",
+   "fieldtype": "Select",
+   "label": "Mode",
+   "options": "Test\nLive",
+   "default": "Test",
+   "mandatory_depends_on": "flutterwave_enabled"
+  },
+  {
+   "fieldname": "flutterwave_column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "flutterwave_display_label",
+   "fieldtype": "Data",
+   "label": "Checkout Label",
+   "default": "Card / Mobile Money (Flutterwave)",
+   "description": "What payers see in the payment picker."
+  },
+  {
+   "fieldname": "flutterwave_currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "default": "KES",
+   "mandatory_depends_on": "flutterwave_enabled"
+  },
+  {
+   "fieldname": "flutterwave_sort_order",
+   "fieldtype": "Int",
+   "label": "Sort Order",
+   "default": "0",
+   "description": "Lower shows first in checkout."
+  },
+  {
+   "fieldname": "flutterwave_section_credentials",
+   "fieldtype": "Section Break",
+   "label": "Flutterwave API (v3)"
+  },
+  {
+   "fieldname": "flutterwave_secret_key",
+   "fieldtype": "Password",
+   "label": "Secret Key",
+   "mandatory_depends_on": "flutterwave_enabled",
+   "description": "FLWSECK_TEST-… in Test mode, FLWSECK-… in Live mode."
+  },
+  {
+   "fieldname": "flutterwave_secret_hash",
+   "fieldtype": "Password",
+   "label": "Webhook Secret Hash",
+   "mandatory_depends_on": "flutterwave_enabled",
+   "description": "Any long random string; set the same value under Settings → Webhooks in the Flutterwave dashboard (sent as the verif-hash header)."
+  },
+  {
+   "fieldname": "flutterwave_column_break_credentials",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "flutterwave_payment_options",
+   "fieldtype": "Data",
+   "label": "Payment Options",
+   "default": "card,mpesa,mobilemoney",
+   "description": "Comma-separated Flutterwave payment options shown at checkout."
+  },
+  {
+   "fieldname": "flutterwave_logo_url",
+   "fieldtype": "Data",
+   "label": "Checkout Logo URL",
+   "description": "Optional public https URL of your logo."
+  },
+  {
+   "fieldname": "flutterwave_allowed_return_origins",
+   "fieldtype": "Small Text",
+   "label": "Allowed Return URL Origins",
+   "description": "Origins payers may be sent back to after checkout, one per line (e.g. https://lms.example.com, http://localhost:3000). Empty = site URL only."
+  },
+  {
+   "fieldname": "flutterwave_section_callbacks",
+   "fieldtype": "Section Break",
+   "label": "Callbacks",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "flutterwave_callback_base_url",
+   "fieldtype": "Data",
+   "label": "Public Callback Base URL",
+   "description": "Public https origin the gateway can reach, e.g. https://lms.example.com. Empty = site URL. For local development use a tunnel (ngrok, cloudflared). Stripe webhooks are also verified by signature."
+  },
+  {
+   "fieldname": "flutterwave_callback_token",
+   "fieldtype": "Password",
+   "label": "Callback Token",
+   "read_only": 1,
+   "description": "Auto-generated secret embedded in callback URLs; requests without it are rejected."
+  },
+  {
+   "fieldname": "flutterwave_callback_ip_allowlist",
+   "fieldtype": "Small Text",
+   "label": "Callback IP Allowlist",
+   "description": "Optional. One IP per line; callbacks from other IPs are rejected."
+  },
+  {
+   "fieldname": "flutterwave_section_status",
+   "fieldtype": "Section Break",
+   "label": "Connection Check",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "flutterwave_last_tested_at",
+   "fieldtype": "Datetime",
+   "label": "Last Tested At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "flutterwave_last_test_result",
+   "fieldtype": "Small Text",
+   "label": "Last Test Result",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paystack_tab",
+   "fieldtype": "Tab Break",
+   "label": "Paystack"
+  },
+  {
+   "fieldname": "paystack_intro",
+   "fieldtype": "HTML",
+   "options": "<p class='text-muted small'>Paystack checkout: cards, M-Pesa (Kenya), mobile money and bank options in Nigeria, Ghana, South Africa and Kenya.</p>"
+  },
+  {
+   "fieldname": "paystack_enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "0",
+   "description": "Master switch. When off the gateway is hidden from checkout and refuses new payments; results for payments already started are still processed."
+  },
+  {
+   "fieldname": "paystack_environment",
+   "fieldtype": "Select",
+   "label": "Mode",
+   "options": "Test\nLive",
+   "default": "Test",
+   "mandatory_depends_on": "paystack_enabled"
+  },
+  {
+   "fieldname": "paystack_column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "paystack_display_label",
+   "fieldtype": "Data",
+   "label": "Checkout Label",
+   "default": "Card / M-Pesa (Paystack)",
+   "description": "What payers see in the payment picker."
+  },
+  {
+   "fieldname": "paystack_currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "default": "KES",
+   "mandatory_depends_on": "paystack_enabled"
+  },
+  {
+   "fieldname": "paystack_sort_order",
+   "fieldtype": "Int",
+   "label": "Sort Order",
+   "default": "0",
+   "description": "Lower shows first in checkout."
+  },
+  {
+   "fieldname": "paystack_section_credentials",
+   "fieldtype": "Section Break",
+   "label": "Paystack API"
+  },
+  {
+   "fieldname": "paystack_secret_key",
+   "fieldtype": "Password",
+   "label": "Secret Key",
+   "mandatory_depends_on": "paystack_enabled",
+   "description": "sk_test_… in Test mode, sk_live_… in Live mode. Also used to verify webhook signatures."
+  },
+  {
+   "fieldname": "paystack_column_break_credentials",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "paystack_channels",
+   "fieldtype": "Data",
+   "label": "Channels",
+   "description": "Optional comma-separated list, e.g. card,mobile_money,bank. Empty = all channels enabled on your account."
+  },
+  {
+   "fieldname": "paystack_allowed_return_origins",
+   "fieldtype": "Small Text",
+   "label": "Allowed Return URL Origins",
+   "description": "Origins payers may be sent back to after checkout, one per line (e.g. https://lms.example.com, http://localhost:3000). Empty = site URL only."
+  },
+  {
+   "fieldname": "paystack_section_callbacks",
+   "fieldtype": "Section Break",
+   "label": "Callbacks",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "paystack_callback_base_url",
+   "fieldtype": "Data",
+   "label": "Public Callback Base URL",
+   "description": "Public https origin the gateway can reach, e.g. https://lms.example.com. Empty = site URL. For local development use a tunnel (ngrok, cloudflared). Stripe webhooks are also verified by signature."
+  },
+  {
+   "fieldname": "paystack_callback_token",
+   "fieldtype": "Password",
+   "label": "Callback Token",
+   "read_only": 1,
+   "description": "Auto-generated secret embedded in callback URLs; requests without it are rejected."
+  },
+  {
+   "fieldname": "paystack_callback_ip_allowlist",
+   "fieldtype": "Small Text",
+   "label": "Callback IP Allowlist",
+   "description": "Optional. One IP per line; callbacks from other IPs are rejected."
+  },
+  {
+   "fieldname": "paystack_section_status",
+   "fieldtype": "Section Break",
+   "label": "Connection Check",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "paystack_last_tested_at",
+   "fieldtype": "Datetime",
+   "label": "Last Tested At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paystack_last_test_result",
+   "fieldtype": "Small Text",
+   "label": "Last Test Result",
+   "read_only": 1
+  },
+  {
+   "fieldname": "receipts_tab",
+   "fieldtype": "Tab Break",
+   "label": "Receipts"
+  },
+  {
+   "fieldname": "receipts_enabled",
+   "fieldtype": "Check",
+   "label": "Issue Receipts",
+   "default": "1",
+   "description": "Give every successful payment a receipt number and a protected PDF receipt."
+  },
+  {
+   "fieldname": "email_receipts",
+   "fieldtype": "Check",
+   "label": "Email Receipts to Payers",
+   "default": "0"
+  },
+  {
+   "fieldname": "receipt_prefix",
+   "fieldtype": "Data",
+   "label": "Receipt Number Prefix",
+   "default": "RCPT-",
+   "description": "Numbers continue per year, e.g. RCPT-2026-00001."
+  },
+  {
+   "fieldname": "column_break_receipts",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "receipt_page_size",
+   "fieldtype": "Select",
+   "label": "Page Size",
+   "options": "A4\nA5\nLetter",
+   "default": "A4"
+  },
+  {
+   "fieldname": "receipt_margin_mm",
+   "fieldtype": "Int",
+   "label": "Page Margin (mm)",
+   "default": "12"
+  },
+  {
+   "fieldname": "section_org",
+   "fieldtype": "Section Break",
+   "label": "Organisation (printed on receipts)"
+  },
+  {
+   "fieldname": "organization_name",
+   "fieldtype": "Data",
+   "label": "Organisation Name"
+  },
+  {
+   "fieldname": "tax_pin",
+   "fieldtype": "Data",
+   "label": "Tax PIN (e.g. KRA PIN)"
+  },
+  {
+   "fieldname": "organization_email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "organization_phone",
+   "fieldtype": "Data",
+   "label": "Phone"
+  },
+  {
+   "fieldname": "column_break_org",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "organization_address",
+   "fieldtype": "Small Text",
+   "label": "Address"
+  },
+  {
+   "fieldname": "logo",
+   "fieldtype": "Attach Image",
+   "label": "Logo"
+  },
+  {
+   "fieldname": "section_design",
+   "fieldtype": "Section Break",
+   "label": "Receipt Design"
+  },
+  {
+   "fieldname": "receipt_html",
+   "fieldtype": "Code",
+   "label": "Receipt HTML",
+   "options": "HTML",
+   "description": "Jinja HTML. Leave empty to use the built-in design. Available: {{ receipt_number }}, {{ issued_on }}, {{ paid_on }}, {{ payer_name }}, {{ payer_email }}, {{ payer_phone }}, {{ amount }} (formatted), {{ amount_value }}, {{ currency }}, {{ description }}, {{ provider }}, {{ payment_method }}, {{ provider_receipt }}, {{ transaction }}, {{ reference_doctype }}, {{ reference_name }}, {{ organization_name }}, {{ organization_address }}, {{ organization_email }}, {{ organization_phone }}, {{ tax_pin }}, {{ logo }} (image data URI), {{ footer }}."
+  },
+  {
+   "fieldname": "receipt_footer",
+   "fieldtype": "Small Text",
+   "label": "Receipt Footer",
+   "default": "Thank you for your payment."
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-14 14:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Payment Integration",
+ "name": "Payment Integration Settings",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "print": 1,
+   "email": 1,
+   "share": 0
+  },
+  {
+   "role": "Payments Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "print": 1,
+   "email": 1,
+   "share": 0
+  }
+ ],
+ "description": "Payment gateways (one tab each) and receipt settings."
+}

@@ -5,12 +5,12 @@ Flow: SubmitOrderRequest → redirect payer to Pesapal → Pesapal sends an IPN
 status is always read with GetTransactionStatus before it is trusted.
 """
 
-from payment_integration.payment_integration.providers.base import (
+from payment_integration.payment_integration.gateways.base import (
 	FAILED,
 	PENDING,
 	SUCCESSFUL,
 	CallbackInfo,
-	PaymentProvider,
+	PaymentGateway,
 	ProviderError,
 	ProviderResult,
 )
@@ -20,8 +20,8 @@ from payment_integration.payment_integration.providers.base import (
 STATUS_CODES = {0: PENDING, 1: SUCCESSFUL, 2: FAILED, 3: FAILED}
 
 
-class PesapalProvider(PaymentProvider):
-	name = "Pesapal"
+class PesapalGateway(PaymentGateway):
+	key = "Pesapal"
 	live_url = "https://pay.pesapal.com/v3"
 	sandbox_url = "https://cybqa.pesapal.com/pesapalv3"
 	token_ttl_margin = 30  # tokens live 5 minutes
@@ -44,8 +44,8 @@ class PesapalProvider(PaymentProvider):
 		data = self._check(self.http(
 			"POST", "/api/Auth/RequestToken",
 			json={
-				"consumer_key": self.account.pesapal_consumer_key or "",
-				"consumer_secret": self.secret("pesapal_consumer_secret"),
+				"consumer_key": self.settings.consumer_key or "",
+				"consumer_secret": self.secret("consumer_secret"),
 			},
 			headers=self._json_headers,
 		), "authentication")
@@ -57,12 +57,12 @@ class PesapalProvider(PaymentProvider):
 		return {**self._json_headers, "Authorization": f"Bearer {self.get_access_token()}"}
 
 	def register_ipn(self, force: bool = False) -> str:
-		"""Register our IPN URL once per account; re-register if it changed."""
+		"""Register our IPN URL once; re-register if it changed."""
 		import frappe
 
-		url = self.callback_url("pesapal")
-		if not force and self.account.pesapal_ipn_id and self.account.pesapal_ipn_url == url:
-			return self.account.pesapal_ipn_id
+		url = self.callback_url()
+		if not force and self.settings.ipn_id and self.settings.ipn_url == url:
+			return self.settings.ipn_id
 		data = self._check(self.http(
 			"POST", "/api/URLSetup/RegisterIPN",
 			json={"url": url, "ipn_notification_type": "GET"},
@@ -71,9 +71,7 @@ class PesapalProvider(PaymentProvider):
 		ipn_id = data.get("ipn_id")
 		if not ipn_id:
 			raise ProviderError("Pesapal did not return an IPN id")
-		frappe.db.set_value("Payment Provider Account", self.account.name,
-							{"pesapal_ipn_id": ipn_id, "pesapal_ipn_url": url})
-		self.account.pesapal_ipn_id, self.account.pesapal_ipn_url = ipn_id, url
+		self.settings.set_values({"ipn_id": ipn_id, "ipn_url": url})
 		return ipn_id
 
 	def initiate(self, txn, *, return_url=None):
@@ -91,7 +89,7 @@ class PesapalProvider(PaymentProvider):
 			"billing_address": {
 				"email_address": txn.email or "",
 				"phone_number": txn.phone or "",
-				"country_code": self.account.pesapal_country_code or "KE",
+				"country_code": self.settings.country_code or "KE",
 				"first_name": first,
 				"last_name": last,
 			},

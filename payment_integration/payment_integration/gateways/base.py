@@ -1,4 +1,4 @@
-"""Common provider interface, HTTP helper and payload redaction."""
+"""Common gateway interface, HTTP helper and payload redaction."""
 
 import json
 from dataclasses import dataclass, field
@@ -14,7 +14,7 @@ PENDING, SUCCESSFUL, FAILED, CANCELLED, EXPIRED = (
 	"Pending", "Successful", "Failed", "Cancelled", "Expired",
 )
 
-_SECRET_KEYS = ("password", "secret", "token", "passkey", "authorization", "consumer_key")
+_SECRET_KEYS = ("password", "secret", "token", "passkey", "authorization", "consumer_key", "signature")
 _PHONE_KEYS = ("phone", "phonenumber", "msisdn", "partya")
 
 
@@ -43,9 +43,8 @@ class ProviderResult:
 
 @dataclass
 class CallbackInfo:
-	"""What a callback tells us. Callbacks are unsigned for both Daraja and
-	Pesapal, so this is only a hint — the status is always re-read from the
-	gateway before it is trusted."""
+	"""What a callback tells us. Status is always re-read from the gateway
+	before it is trusted, even for gateways that sign callbacks."""
 
 	provider_request_id: str | None = None
 	merchant_reference: str | None = None
@@ -78,37 +77,52 @@ def redact(value):
 	return value
 
 
+def with_query(url: str, params: dict, safe: str = "") -> str:
+	"""Append query params to a URL (keeps existing ones)."""
+	from urllib.parse import parse_qsl, urlsplit, urlunsplit
+
+	parts = urlsplit(url)
+	query = urlencode(parse_qsl(parts.query) + list(params.items()), safe=safe)
+	return urlunsplit(parts._replace(query=query))
+
+
 def to_json(value, limit: int = 10000) -> str:
 	text = json.dumps(redact(value), default=str, indent=1)
 	return text if len(text) <= limit else text[:limit] + "\n…(truncated)"
 
 
-class PaymentProvider:
-	"""Adapter interface. Subclasses implement the gateway specifics."""
+class PaymentGateway:
+	"""Adapter interface. `self.settings` is the gateway's Single settings doc."""
 
-	name = ""
+	key = ""
 	live_url = ""
 	sandbox_url = ""
 	token_ttl_margin = 60
 
-	def __init__(self, account):
-		self.account = account
+	def __init__(self, settings):
+		self.settings = settings
 
 	# ── helpers ──────────────────────────────────────────────────────────
 	@property
+	def is_live(self) -> bool:
+		return self.settings.environment == "Live"
+
+	@property
 	def base_url(self) -> str:
-		return self.live_url if self.account.environment == "Live" else self.sandbox_url
+		return self.live_url if self.is_live else self.sandbox_url
 
 	def secret(self, fieldname: str) -> str:
-		value = self.account.get_password(fieldname, raise_exception=False)
+		value = self.settings.get_password(fieldname, raise_exception=False)
 		if not value:
-			raise ProviderError(f"{self.account.name}: {fieldname} is not configured")
+			raise ProviderError(f"{self.key}: {self.settings.meta.get_label(fieldname)} is not configured")
 		return value
 
-	def callback_url(self, method: str) -> str:
-		base = (self.account.callback_base_url or frappe.utils.get_url()).rstrip("/")
-		qs = urlencode({"cb": self.account.callback_id, "token": self.secret("callback_token")})
-		return f"{base}/api/method/payment_integration.payment_integration.api.callbacks.{method}?{qs}"
+	def callback_url(self) -> str:
+		"""Where the gateway sends results. Each gateway has its own endpoint
+		(api/callbacks.<key>) and the URL carries the gateway's secret token."""
+		base = (self.settings.callback_base_url or frappe.utils.get_url()).rstrip("/")
+		qs = urlencode({"token": self.secret("callback_token")})
+		return f"{base}/api/method/payment_integration.payment_integration.api.callbacks.{self.key.lower()}?{qs}"
 
 	def http(self, method: str, path: str, *, retryable_statuses=(429, 500, 502, 503, 504), **kwargs) -> dict:
 		"""JSON request to the gateway. Raises ProviderError with a sanitised
@@ -118,14 +132,14 @@ class PaymentProvider:
 		try:
 			resp = requests.request(method, url, **kwargs)
 		except requests.RequestException as e:
-			raise ProviderError(f"{self.name} unreachable: {type(e).__name__}", retryable=True) from None
+			raise ProviderError(f"{self.key} unreachable: {type(e).__name__}", retryable=True) from None
 		try:
 			data = resp.json()
 		except ValueError:
 			data = {"raw": (resp.text or "")[:500]}
 		if resp.status_code >= 400:
 			raise ProviderError(
-				f"{self.name} HTTP {resp.status_code}: {self.error_message(data)}",
+				f"{self.key} HTTP {resp.status_code}: {self.error_message(data)}",
 				retryable=resp.status_code in retryable_statuses,
 				payload=data,
 			)
@@ -135,9 +149,9 @@ class PaymentProvider:
 		return str(data)[:300]
 
 	def get_access_token(self, force_refresh: bool = False) -> str:
-		from payment_integration.payment_integration.providers import token_cache_key
+		from payment_integration.payment_integration.gateways import token_cache_key
 
-		key = token_cache_key(self.account.name)
+		key = token_cache_key(self.key)
 		if not force_refresh:
 			cached = frappe.cache.get_value(key, expires=True)
 			if cached:
@@ -146,7 +160,22 @@ class PaymentProvider:
 		frappe.cache.set_value(key, token, expires_in_sec=max(30, int(ttl) - self.token_ttl_margin))
 		return token
 
-	# ── to implement ─────────────────────────────────────────────────────
+	# ── overridable ──────────────────────────────────────────────────────
+	def validate_settings(self):
+		"""Gateway-specific checks when its settings are saved."""
+
+	def test_connection(self):
+		"""Raise if the saved credentials do not work."""
+		self.get_access_token(force_refresh=True)
+
+	def authenticate_callback(self, params: dict, raw_body: bytes, headers) -> bool:
+		"""Default: the secret token in the callback URL. Gateways that sign
+		their callbacks (Stripe) override this."""
+		import hmac
+
+		expected = self.settings.get_password("callback_token", raise_exception=False) or ""
+		return bool(expected) and hmac.compare_digest(expected, str(params.get("token") or ""))
+
 	def fetch_access_token(self) -> tuple[str, int]:
 		raise NotImplementedError
 

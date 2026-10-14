@@ -1,9 +1,12 @@
-"""Provider callbacks (server-to-server, unauthenticated by design).
+"""Gateway callbacks (server-to-server). One endpoint per gateway.
 
-Each URL carries `cb` (public account id) and `token` (per-account secret).
-Bodies are never trusted for status: they only point at a transaction whose
-status is then re-read from the gateway (see services.payments.handle_callback).
+Each is authenticated by the gateway's adapter (URL token, plus Stripe's
+signature) and the optional IP allowlist. Bodies never set a status directly:
+they only point at a transaction whose status is then re-read from the
+gateway (services.payments.handle_callback).
 """
+
+import json
 
 import frappe
 
@@ -16,23 +19,26 @@ def _respond(body: dict, status: int = 200):
 	frappe.local.response["http_status_code"] = status
 
 
-def _handle(provider: str):
-	params = {k: v for k, v in frappe.form_dict.items() if k not in ("cmd", "token")}
-	body = {}
+def _handle(gateway: str):
+	params = {k: v for k, v in frappe.form_dict.items() if k != "cmd"}
+	raw_body, body = b"", {}
 	if frappe.request and frappe.request.method == "POST":
-		body = frappe.request.get_json(silent=True) or {}
-	acc = payments.account_for_callback(
-		frappe.form_dict.get("cb"), frappe.form_dict.get("token"), frappe.local.request_ip
-	)
-	if not acc or acc.provider != provider:
-		return _respond({"status": 403, "message": "Forbidden"}, 403)
+		raw_body = frappe.request.get_data() or b""
+		try:
+			body = json.loads(raw_body or b"{}")
+		except ValueError:
+			body = {}
+	headers = frappe.request.headers if frappe.request else {}
 	try:
-		ack = payments.handle_callback(acc, params, body)
+		ack = payments.handle_callback(gateway, params, body, raw_body=raw_body, headers=headers,
+									   ip=frappe.local.request_ip)
 	except Exception:
 		frappe.db.rollback()
-		frappe.log_error(frappe.get_traceback(), f"{provider} callback failed")
-		# Non-2xx makes the provider retry later; reconciliation also catches it.
+		frappe.log_error(frappe.get_traceback(), f"{gateway} callback failed")
+		# Non-2xx makes the gateway retry later; reconciliation also catches it.
 		return _respond({"status": 500, "message": "Error"}, 500)
+	if ack is None:
+		return _respond({"status": 403, "message": "Forbidden"}, 403)
 	return _respond(ack)
 
 
@@ -46,3 +52,28 @@ def daraja(**kwargs):
 def pesapal(**kwargs):
 	"""Pesapal IPN (registered as GET)."""
 	_handle("Pesapal")
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def stripe(**kwargs):
+	"""Stripe webhook (checkout.session.* events)."""
+	_handle("Stripe")
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def paypal(**kwargs):
+	"""PayPal webhook (CHECKOUT.ORDER.APPROVED, PAYMENT.CAPTURE.*)."""
+	_handle("PayPal")
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def flutterwave(**kwargs):
+	"""Flutterwave webhook (charge.completed)."""
+	_handle("Flutterwave")
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def paystack(**kwargs):
+	"""Paystack webhook (charge.success)."""
+	_handle("Paystack")
+
