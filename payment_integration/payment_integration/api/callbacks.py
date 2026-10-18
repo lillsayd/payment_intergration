@@ -20,7 +20,11 @@ def _respond(body: dict, status: int = 200):
 
 
 def _handle(gateway: str):
-	params = {k: v for k, v in frappe.form_dict.items() if k != "cmd"}
+	# Query string first: for JSON bodies Frappe builds form_dict from the body
+	# alone, which drops the ?token= every gateway's callback URL carries.
+	args = getattr(frappe.request, "args", None) if frappe.request else None
+	query = args.to_dict() if hasattr(args, "to_dict") else dict(args or {})
+	params = {**query, **{k: v for k, v in frappe.form_dict.items() if k != "cmd"}}
 	raw_body, body = b"", {}
 	if frappe.request and frappe.request.method == "POST":
 		raw_body = frappe.request.get_data() or b""

@@ -94,3 +94,35 @@ class TestDarajaQueryCodes(FrappeTestCase):
 		self.assertEqual(self._result({"ResultCode": "0", "ResultDesc": "ok"}).status, "Successful")
 		self.assertEqual(self._result({"ResultCode": "1037", "ResultDesc": "DS timeout"}).status, "Expired")
 		self.assertEqual(self._result({"ResultCode": "2001", "ResultDesc": "The initiator information is invalid."}).status, "Failed")
+
+
+class TestCallbackTokenWithJsonBody(FrappeTestCase):
+	"""Daraja posts JSON with ?token= in the URL; Frappe builds form_dict from the body only."""
+
+	def _call(self, token):
+		import json
+		from unittest.mock import patch
+
+		from werkzeug.test import EnvironBuilder
+		from werkzeug.wrappers import Request
+
+		from payment_integration.payment_integration.api import callbacks
+
+		body = {"Body": {"stkCallback": {"CheckoutRequestID": "ws_CO_NOPE", "ResultCode": 0}}}
+		env = EnvironBuilder(method="POST", path="/api/method/x", query_string={"token": token},
+							 data=json.dumps(body), content_type="application/json").get_environ()
+		frappe.local.request = Request(env)
+		frappe.local.form_dict = frappe._dict(body)  # what Frappe does for JSON bodies
+		frappe.local.response = frappe._dict()
+		frappe.local.request_ip = "196.201.212.69"
+		try:
+			with patch("frappe.log_error"):
+				callbacks.daraja()
+		finally:
+			frappe.local.request = None
+		return frappe.local.response.get("http_status_code")
+
+	def test_url_token_is_read_for_json_callbacks(self):
+		token = frappe.get_doc("Payment Integration Settings").get_password("daraja_callback_token", raise_exception=False)
+		self.assertEqual(self._call(token), 200)
+		self.assertEqual(self._call("wrong-token"), 403)
