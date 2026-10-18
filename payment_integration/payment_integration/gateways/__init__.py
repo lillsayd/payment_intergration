@@ -113,10 +113,14 @@ class GatewayConfig:
 	def __getattr__(self, name):
 		if name.startswith("_") or name in ("doc", "gateway", "prefix", "doctype", "meta"):
 			raise AttributeError(name)
-		return self.doc.get(self.field(name))
+		value = self.doc.get(self.field(name))
+		# Pasted credentials often carry stray spaces (" 174379"), which gateways reject.
+		return value.strip() if isinstance(value, str) else value
 
 	def get(self, name, default=None):
 		value = self.doc.get(self.field(name))
+		if isinstance(value, str):
+			value = value.strip()
 		return default if value is None else value
 
 	def get_password(self, name, raise_exception=False):

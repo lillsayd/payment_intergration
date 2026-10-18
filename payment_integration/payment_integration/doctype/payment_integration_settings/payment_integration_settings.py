@@ -18,6 +18,10 @@ class PaymentIntegrationSettings(Document):
 	def validate(self):
 		from payment_integration.payment_integration.gateways import GATEWAYS, get_gateway, settings_for
 
+		# Trim pasted values (shortcodes, keys, URLs): a stray space breaks gateway signatures.
+		for df in self.meta.fields:
+			if df.fieldtype in ("Data", "Small Text") and isinstance(self.get(df.fieldname), str):
+				self.set(df.fieldname, self.get(df.fieldname).strip())
 		for key in GATEWAYS:
 			cfg = settings_for(key, doc=self)
 			# Saved passwords load as "*****": an empty field means no token yet.

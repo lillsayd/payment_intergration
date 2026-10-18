@@ -61,3 +61,14 @@ class TestMyPayments(FrappeTestCase):
 		except frappe.AuthenticationError:
 			status = 401
 		self.assertEqual(status, 401)
+
+
+class TestSettingsTrim(FrappeTestCase):
+	def test_gateway_values_are_trimmed(self):
+		from payment_integration.payment_integration.gateways import settings_for
+
+		doc = frappe.get_doc("Payment Integration Settings")
+		doc.daraja_shortcode = " 174379 "
+		cfg = settings_for("Daraja", doc=doc)
+		self.assertEqual(cfg.shortcode, "174379")
+		self.assertEqual(cfg.get("shortcode"), "174379")
