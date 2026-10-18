@@ -31,6 +31,8 @@ RESULT_STATUS = {
 }
 # Query while the customer has not finished yet.
 PROCESSING_ERROR_CODES = {"500.001.1001"}
+# Query result codes that mean "not decided yet" (seen live: 4999 "The transaction is still under processing").
+PENDING_RESULT_CODES = {"4999"}
 
 
 def normalize_phone(phone: str) -> str:
@@ -149,8 +151,8 @@ class DarajaGateway(PaymentGateway):
 									  raw=e.payload or {})
 			raise
 		code = str(data.get("ResultCode", "")).strip()
-		if code == "":
-			return ProviderResult(status=PENDING, raw=data)
+		if code == "" or code in PENDING_RESULT_CODES or "under processing" in str(data.get("ResultDesc", "")).lower():
+			return ProviderResult(status=PENDING, reason=data.get("ResultDesc"), raw=data)
 		return ProviderResult(
 			status=RESULT_STATUS.get(code, FAILED),
 			reason=None if code == "0" else data.get("ResultDesc"),

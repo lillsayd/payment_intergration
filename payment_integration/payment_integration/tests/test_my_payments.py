@@ -72,3 +72,25 @@ class TestSettingsTrim(FrappeTestCase):
 		cfg = settings_for("Daraja", doc=doc)
 		self.assertEqual(cfg.shortcode, "174379")
 		self.assertEqual(cfg.get("shortcode"), "174379")
+
+
+class TestDarajaQueryCodes(FrappeTestCase):
+	def _result(self, payload):
+		from unittest.mock import patch
+
+		from payment_integration.payment_integration.gateways import get_gateway, settings_for
+
+		gw = get_gateway(settings_for("Daraja"))
+		txn = frappe._dict(provider_request_id="ws_CO_TEST")
+		with patch.object(type(gw), "http", return_value=payload), patch.object(type(gw), "_auth_headers", return_value={}), \
+				patch.object(type(gw), "_password", return_value=("pw", "20260101000000")):
+			return gw.query_status(txn)
+
+	def test_still_processing_is_pending_not_failed(self):
+		r = self._result({"ResultCode": "4999", "ResultDesc": "The transaction is still under processing"})
+		self.assertEqual(r.status, "Pending")
+
+	def test_final_codes(self):
+		self.assertEqual(self._result({"ResultCode": "0", "ResultDesc": "ok"}).status, "Successful")
+		self.assertEqual(self._result({"ResultCode": "1037", "ResultDesc": "DS timeout"}).status, "Expired")
+		self.assertEqual(self._result({"ResultCode": "2001", "ResultDesc": "The initiator information is invalid."}).status, "Failed")
