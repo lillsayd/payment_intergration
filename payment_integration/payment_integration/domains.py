@@ -5,6 +5,14 @@ PERM_MANAGE_GATEWAYS = "manage_payment_gateways"
 
 NAV_ITEMS = [
 	{
+		# Everyone who pays (learners, applicants) sees their own payments and receipts.
+		"key": "my-payments",
+		"label": "My payments",
+		"href": "/my-payments",
+		"icon": "my-payments",
+		"section": "main",
+	},
+	{
 		"key": "payment-gateways",
 		"label": "Payment Gateways",
 		"href": "/settings/payment-gateways",

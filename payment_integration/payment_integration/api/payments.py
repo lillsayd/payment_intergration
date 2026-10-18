@@ -103,6 +103,40 @@ def get_status(**kwargs):
 		return _errors("get_status", e)
 
 
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+@jwt_required
+def my_payments(**kwargs):
+	"""{status?, page?, page_size?} — the signed-in user's own payments, newest first."""
+	try:
+		user = frappe.session.user
+		if user == "Guest":
+			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
+		data = parse_request_data(kwargs)
+		page = max(1, int(data.get("page") or 1))
+		page_size = min(100, max(1, int(data.get("page_size") or 20)))
+		filters = {"payer": user}
+		if (data.get("status") or "").strip():
+			filters["status"] = data["status"].strip()
+		total = frappe.db.count("Payment Transaction", filters)
+		names = frappe.get_all("Payment Transaction", filters=filters, pluck="name", order_by="creation desc",
+							   limit_start=(page - 1) * page_size, limit_page_length=page_size)
+		rows = []
+		for n in names:
+			view = payments.transaction_view(n)
+			view["description"] = frappe.db.get_value("Payment Transaction", n, "description")
+			view.pop("redirect_url", None)
+			rows.append(view)
+		paid = frappe.get_all("Payment Transaction", filters={"payer": user, "status": "Successful"},
+							  fields=["currency", "sum(amount) as total"], group_by="currency")
+		return success_response(
+			data={"payments": rows, "paid_totals": [{"currency": r.currency, "total": r.total} for r in paid]},
+			pagination={"page": page, "page_size": page_size, "total": total,
+						"pages": (total + page_size - 1) // page_size},
+		)
+	except Exception as e:
+		return _errors("my_payments", e)
+
+
 @frappe.whitelist(allow_guest=True, methods=["GET"])
 @jwt_required
 def download_receipt(**kwargs):
