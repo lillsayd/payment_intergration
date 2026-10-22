@@ -45,6 +45,9 @@ TXN = "Payment Transaction"
 # of sending another STK prompt / creating another order.
 DUPLICATE_WINDOW_SECONDS = 120
 MAX_FULFILMENT_ATTEMPTS = 5
+# How long a pending payment's on-page checkout can be resumed (matches the
+# shortest gateway session: Stripe Checkout lasts 24h, PayPal orders ~3h).
+NEXT_ACTION_TTL_SECONDS = 2 * 60 * 60
 
 
 # ── gateways ─────────────────────────────────────────────────────────────
@@ -64,6 +67,8 @@ def enabled_gateways() -> list[dict]:
 			"environment": cfg.environment,
 			"requires_phone": meta["requires_phone"],
 			"flow": meta["flow"],
+			# True: with embed=1 the payer completes payment without leaving the page.
+			"embedded": not meta.get("embed_key") or bool(cfg.get(meta["embed_key"])),
 			"icon": meta["icon"],
 			"_order": int(cfg.sort_order or 0),
 		})
@@ -125,7 +130,7 @@ def check_return_url(settings, return_url: str | None) -> str | None:
 def create_payment(*, amount, currency=None, gateway=None,
 				   reference_doctype=None, reference_name=None, payer=None,
 				   phone=None, email=None, description=None, idempotency_key=None,
-				   return_url=None) -> dict:
+				   return_url=None, embed=False) -> dict:
 	"""Create a transaction and start it with the gateway. Server-side only:
 	callers must compute `amount` themselves."""
 	settings = resolve_gateway(gateway)
@@ -142,7 +147,7 @@ def create_payment(*, amount, currency=None, gateway=None,
 	if idempotency_key:
 		existing = frappe.db.get_value(TXN, {"idempotency_key": idempotency_key}, "name")
 		if existing:
-			return transaction_view(existing)
+			return resume_view(existing)
 	if reference_doctype and reference_name and payer:
 		recent = frappe.db.get_value(TXN, {
 			"reference_doctype": reference_doctype, "reference_name": reference_name,
@@ -151,7 +156,7 @@ def create_payment(*, amount, currency=None, gateway=None,
 			"creation": (">=", add_to_date(now_datetime(), seconds=-DUPLICATE_WINDOW_SECONDS)),
 		}, "name")
 		if recent:
-			return transaction_view(recent)
+			return resume_view(recent)
 
 	txn = frappe.new_doc(TXN)
 	txn.update({
@@ -170,7 +175,7 @@ def create_payment(*, amount, currency=None, gateway=None,
 	if payer and payer != "Guest":
 		txn.payer_name = frappe.db.get_value("User", payer, "full_name")
 	try:
-		started = get_gateway(settings).initiate(txn, return_url=return_url)
+		started = get_gateway(settings).initiate(txn, return_url=return_url, embed=bool(embed))
 	except ProviderError as e:
 		_append_event(txn, "initiate", "Initiated", "Failed", str(e), e.payload)
 		txn.status = "Failed"
@@ -189,8 +194,24 @@ def create_payment(*, amount, currency=None, gateway=None,
 	_append_event(txn, "initiate", "Initiated", PENDING, "Started with provider", started.get("raw"))
 	txn.save(ignore_permissions=True)
 	frappe.db.commit()
+	frappe.cache.set_value(_next_action_key(txn.name), started.get("next_action"),
+						   expires_in_sec=NEXT_ACTION_TTL_SECONDS)
 	view = transaction_view(txn.name)
 	view["next_action"] = started.get("next_action")
+	return view
+
+
+def _next_action_key(name: str) -> str:
+	return f"payment_integration:next_action:{name}"
+
+
+def resume_view(name: str) -> dict:
+	"""A repeated request for a pending payment: hand back how to continue it
+	(same iframe / embedded session / popup) rather than starting another."""
+	view = transaction_view(name)
+	if view["status"] == PENDING:
+		view["next_action"] = frappe.cache.get_value(_next_action_key(name)) or (
+			{"type": "redirect", "url": view["redirect_url"]} if view.get("redirect_url") else None)
 	return view
 
 

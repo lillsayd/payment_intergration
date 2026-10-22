@@ -68,18 +68,17 @@ class PayPalGateway(PaymentGateway):
 	def _headers(self, **extra):
 		return {"Authorization": f"Bearer {self.get_access_token()}", "Content-Type": "application/json", **extra}
 
-	def initiate(self, txn, *, return_url=None):
-		if not return_url:
+	def initiate(self, txn, *, return_url=None, embed=False):
+		if not return_url and not embed:
 			raise ProviderError("A return URL is required for PayPal checkout")
 		currency = (txn.currency or "").upper()
 		brand = self.settings.brand_name or frappe.db.get_single_value(
 			"Payment Integration Settings", "organization_name") or None
-		context = {
-			"user_action": "PAY_NOW",
-			"shipping_preference": "NO_SHIPPING",
-			"return_url": with_query(return_url, {"ref": txn.name}),
-			"cancel_url": with_query(return_url, {"ref": txn.name, "cancelled": "1"}),
-		}
+		context = {"user_action": "PAY_NOW", "shipping_preference": "NO_SHIPPING"}
+		if not embed:
+			# The PayPal buttons (embed) approve in PayPal's own popup and need no URLs.
+			context.update({"return_url": with_query(return_url, {"ref": txn.name}),
+							"cancel_url": with_query(return_url, {"ref": txn.name, "cancelled": "1"})})
 		if brand:
 			context["brand_name"] = brand[:127]
 		order = self.http("POST", "/v2/checkout/orders", json={
@@ -92,9 +91,17 @@ class PayPalGateway(PaymentGateway):
 				"amount": {"currency_code": currency, "value": paypal_amount(txn.amount, currency)},
 			}],
 			"payment_source": {"paypal": {"experience_context": context}},
-		}, headers=self._headers(**{"PayPal-Request-Id": f"order-{txn.name}"}))
+		}, headers=self._headers(**{"PayPal-Request-Id": f"order-{'embedded-' if embed else ''}{txn.name}"}))
 		url = next((l.get("href") for l in order.get("links") or []
 					if l.get("rel") in ("payer-action", "approve")), None)
+		if embed and order.get("id"):
+			return {
+				"provider_request_id": order["id"],
+				"redirect_url": url,
+				"raw": {"id": order["id"], "status": order.get("status")},
+				"next_action": {"type": "paypal_buttons", "order_id": order["id"], "client_id": self.settings.client_id,
+								"currency": currency, "url": url},
+			}
 		if not order.get("id") or not url:
 			raise ProviderError("PayPal did not return an approval link", payload=order)
 		return {

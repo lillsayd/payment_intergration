@@ -75,10 +75,14 @@ class StripeGateway(PaymentGateway):
 		return value
 
 	def validate_settings(self):
+		live = self.settings.environment == "Live"
+		pk = self._publishable_key()
+		if pk and not pk.startswith("pk_live_" if live else "pk_test_"):
+			frappe.throw(f"This is not a {'live' if live else 'test'} Stripe publishable key "
+						 f"({'pk_live_' if live else 'pk_test_'}… expected)")
 		key = self._plain_secret_key()
 		if not key:
 			return
-		live = self.settings.environment == "Live"
 		ok_prefixes = ("sk_live_", "rk_live_") if live else ("sk_test_", "rk_test_")
 		if not key.startswith(ok_prefixes):
 			frappe.throw(
@@ -89,8 +93,13 @@ class StripeGateway(PaymentGateway):
 	def test_connection(self):
 		self.http("GET", "/v1/checkout/sessions", params={"limit": 1}, headers=self._auth())
 
-	def initiate(self, txn, *, return_url=None):
-		if not return_url:
+	def _publishable_key(self) -> str | None:
+		key = (self.settings.publishable_key or "").strip()
+		return key or None
+
+	def initiate(self, txn, *, return_url=None, embed=False):
+		embedded = bool(embed and self._publishable_key())
+		if not return_url and not embedded:
 			raise ProviderError("A return URL is required for Stripe Checkout")
 		currency = (txn.currency or "").lower()
 		data = {
@@ -99,25 +108,41 @@ class StripeGateway(PaymentGateway):
 			"line_items[0][price_data][currency]": currency,
 			"line_items[0][price_data][unit_amount]": to_minor(txn.amount, currency),
 			"line_items[0][price_data][product_data][name]": (txn.description or "Payment")[:250],
-			"success_url": _with_params(return_url, {"ref": txn.name, "session_id": "{CHECKOUT_SESSION_ID}"}),
-			"cancel_url": _with_params(return_url, {"ref": txn.name, "cancelled": "1"}),
 			"client_reference_id": txn.name,
 			"metadata[transaction]": txn.name,
 			"payment_intent_data[metadata][transaction]": txn.name,
 		}
+		if embedded:
+			# Embedded Checkout mounts in our page; it never navigates away.
+			data.update({"ui_mode": "embedded", "redirect_on_completion": "never"})
+		else:
+			data.update({
+				"success_url": _with_params(return_url, {"ref": txn.name, "session_id": "{CHECKOUT_SESSION_ID}"}),
+				"cancel_url": _with_params(return_url, {"ref": txn.name, "cancelled": "1"}),
+			})
 		if txn.email:
 			data["customer_email"] = txn.email
 		if self.settings.statement_descriptor:
 			data["payment_intent_data[statement_descriptor_suffix]"] = self.settings.statement_descriptor[:22]
 		# Idempotency-Key: a retried request can never create a second session.
-		session = self.http("POST", "/v1/checkout/sessions", data=data,
-							headers={**self._auth(), "Idempotency-Key": f"checkout-{txn.name}"})
+		session = self.http("POST", "/v1/checkout/sessions", data=data, headers={
+			**self._auth(), "Idempotency-Key": f"checkout-{'embedded-' if embedded else ''}{txn.name}"})
+		raw = {k: session.get(k) for k in ("id", "status", "payment_status", "amount_total", "currency")}
+		if embedded:
+			if not session.get("id") or not session.get("client_secret"):
+				raise ProviderError("Stripe did not return an embedded checkout session", payload=raw)
+			return {
+				"provider_request_id": session["id"],
+				"raw": raw,
+				"next_action": {"type": "stripe_embedded", "client_secret": session["client_secret"],
+								"publishable_key": self._publishable_key()},
+			}
 		if not session.get("id") or not session.get("url"):
 			raise ProviderError("Stripe did not return a checkout URL", payload=session)
 		return {
 			"provider_request_id": session["id"],
 			"redirect_url": session["url"],
-			"raw": {k: session.get(k) for k in ("id", "status", "payment_status", "amount_total", "currency")},
+			"raw": raw,
 			"next_action": {"type": "redirect", "url": session["url"]},
 		}
 

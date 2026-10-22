@@ -91,7 +91,7 @@ class DarajaGateway(PaymentGateway):
 		raw = f"{shortcode}{self.secret('passkey')}{ts}".encode()
 		return base64.b64encode(raw).decode(), ts
 
-	def initiate(self, txn, *, return_url=None):
+	def initiate(self, txn, *, return_url=None, embed=False):
 		amount = float(txn.amount)
 		if amount < 1 or amount != int(amount):
 			raise ProviderError("M-Pesa amounts must be whole shillings (at least KES 1)")

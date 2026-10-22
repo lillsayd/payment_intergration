@@ -1,7 +1,9 @@
 """Payment receipts: sequential numbers + protected PDF per successful payment.
 
 The design is Payment Integration Settings → Receipt HTML (Jinja), or the
-built-in receipts/default_receipt.html when empty. Numbers are assigned in
+built-in receipts/default_receipt.html when empty. The built-in design takes
+the site's branding (Main Site Settings: name, logo, colours, contact
+details) for anything the receipt settings leave blank. Numbers are assigned in
 the same transaction that marks the payment Successful; the PDF is rendered
 in the background and stored as a private File (rendered lazily on download
 if that has not happened yet).
@@ -52,16 +54,62 @@ def _mask_phone(phone: str | None) -> str | None:
 	return phone[:4] + "*" * (len(phone) - 7) + phone[-3:]
 
 
-def _org_context(s) -> dict:
+def _site_branding() -> tuple[dict, str | None]:
+	"""(branding, logo file URL) from common_utils' Main Site Settings, if available."""
+	try:
+		from common_utils.api.branding import get_branding
+
+		brand = get_branding()
+		logo = (frappe.db.get_single_value("Main Site Settings", "company_logo") or "").strip() or None
+		return brand, logo
+	except Exception:
+		return {}, None
+
+
+def _clean_address(text: str | None) -> str:
+	"""Collapse blank lines a rich address field tends to collect."""
+	return "\n".join(line.strip() for line in (text or "").splitlines() if line.strip())
+
+
+def _theme(brand: dict) -> dict:
+	"""Receipt colours from the site theme. The band uses a darker shade than the
+	base colour so white text on it stays readable."""
+	palette = brand.get("primary_palette") or {}
+	base = brand.get("primary_color") or "#0f766e"
 	return {
-		"organization_name": s.organization_name or frappe.db.get_single_value("Website Settings", "app_name") or "",
-		"organization_address": s.organization_address or "",
-		"organization_email": s.organization_email or "",
-		"organization_phone": s.organization_phone or "",
-		"tax_pin": s.tax_pin or "",
-		"logo": image_data_uri(s.logo),
-		"footer": s.receipt_footer or "",
+		"primary": base,
+		"band": palette.get("700") or base,
+		"strong": palette.get("800") or base,
+		"tint": palette.get("50") or "#f8fafc",
+		"soft": palette.get("100") or "#f1f5f9",
+		"line": palette.get("200") or "#e5e7eb",
+		"accent": brand.get("accent_color") or base,
 	}
+
+
+def _org_context(s) -> dict:
+	brand, brand_logo = _site_branding()
+	return {
+		"organization_name": s.organization_name or brand.get("company_name")
+		or frappe.db.get_single_value("Website Settings", "app_name") or "",
+		"organization_address": _clean_address(s.organization_address or brand.get("address")),
+		"organization_email": s.organization_email or brand.get("email") or "",
+		"organization_phone": s.organization_phone or brand.get("phone") or "",
+		"organization_website": (brand.get("website") or "").removeprefix("https://").removeprefix("http://").rstrip("/"),
+		"tagline": brand.get("tagline") or "",
+		"tax_pin": s.tax_pin or "",
+		"logo": image_data_uri(s.logo or brand_logo),
+		"footer": s.receipt_footer or "",
+		"theme": _theme(brand),
+	}
+
+
+def page_margin_mm(s) -> int:
+	"""The built-in design draws its own full-bleed band and spacing; a custom
+	design gets the configured page margin."""
+	if not s.receipt_html:
+		return 0
+	return 12 if s.receipt_margin_mm is None else s.receipt_margin_mm
 
 
 def context_for(txn) -> dict:
@@ -118,7 +166,7 @@ def render_pdf(txn) -> bytes:
 		s.receipt_html or default_receipt_html(), context_for(txn),
 		title=f"Receipt {txn.receipt_number}", author=s.organization_name or None,
 		page_size=s.receipt_page_size or "A4", orientation="Portrait",
-		margin_mm=12 if s.receipt_margin_mm is None else s.receipt_margin_mm,
+		margin_mm=page_margin_mm(s),
 	)
 
 

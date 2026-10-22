@@ -56,8 +56,8 @@ class PaystackGateway(PaymentGateway):
 	def test_connection(self):
 		self.http("GET", "/transaction", params={"perPage": 1}, headers=self._auth())
 
-	def initiate(self, txn, *, return_url=None):
-		if not return_url:
+	def initiate(self, txn, *, return_url=None, embed=False):
+		if not return_url and not embed:
 			raise ProviderError("A return URL is required for Paystack checkout")
 		if not txn.email:
 			raise ProviderError("Paystack needs the payer's email address")
@@ -66,20 +66,24 @@ class PaystackGateway(PaymentGateway):
 			"amount": to_subunit(txn.amount),
 			"currency": (txn.currency or "").upper(),
 			"reference": txn.name,
-			"callback_url": with_query(return_url, {"ref": txn.name}),
 			"metadata": {"transaction": txn.name, "description": (txn.description or "")[:100]},
 		}
+		if return_url:
+			payload["callback_url"] = with_query(return_url, {"ref": txn.name})
 		if self.settings.channels:
 			payload["channels"] = [c.strip() for c in self.settings.channels.split(",") if c.strip()]
 		data = self.http("POST", "/transaction/initialize", json=payload, headers=self._auth())
 		url = ((data or {}).get("data") or {}).get("authorization_url")
 		if not data.get("status") or not url:
 			raise ProviderError(f"Paystack refused the payment: {self.error_message(data)}", payload=data)
+		access_code = data["data"].get("access_code")
 		return {
 			"provider_request_id": txn.name,  # Paystack tracks us by reference
 			"redirect_url": url,
 			"raw": {"status": data.get("status"), "reference": data["data"].get("reference")},
-			"next_action": {"type": "redirect", "url": url},
+			# Inline popup: resumes this same initialised transaction over our page.
+			"next_action": ({"type": "paystack_inline", "access_code": access_code, "url": url}
+							if embed and access_code else {"type": "redirect", "url": url}),
 		}
 
 	def query_status(self, txn):

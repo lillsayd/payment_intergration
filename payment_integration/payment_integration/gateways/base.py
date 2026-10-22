@@ -179,8 +179,13 @@ class PaymentGateway:
 	def fetch_access_token(self) -> tuple[str, int]:
 		raise NotImplementedError
 
-	def initiate(self, txn, *, return_url: str | None = None) -> dict:
-		"""Start the payment. Returns {"provider_request_id", ..., "next_action": {...}}."""
+	def initiate(self, txn, *, return_url: str | None = None, embed: bool = False) -> dict:
+		"""Start the payment. Returns {"provider_request_id", ..., "next_action": {...}}.
+
+		`embed`: the payer stays on the merchant page. Gateways that support it
+		return an on-page next_action (iframe, embedded checkout, inline popup)
+		instead of {"type": "redirect"}; a gateway that cannot embed (or lacks
+		the public key it needs) still returns a redirect."""
 		raise NotImplementedError
 
 	def query_status(self, txn) -> ProviderResult:

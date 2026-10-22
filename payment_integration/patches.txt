@@ -5,4 +5,5 @@
 [post_model_sync]
 payment_integration.patches.v1.remove_payment_provider_account
 payment_integration.patches.v1.merge_gateway_settings
+payment_integration.patches.v1.use_themed_receipt
 # Patches added in this section will be executed after doctypes are migrated

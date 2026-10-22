@@ -42,10 +42,14 @@ class FlutterwaveGateway(PaymentGateway):
 		return value
 
 	def validate_settings(self):
+		live = self.settings.environment == "Live"
+		pub = (self.settings.public_key or "").strip()
+		if pub and pub.startswith("FLWPUBK_TEST") == live:
+			frappe.throw(f"This is not a {'live' if live else 'test'} Flutterwave public key "
+						 f"({'FLWPUBK-…' if live else 'FLWPUBK_TEST-…'} expected in {self.settings.environment} mode)")
 		key = self._plain("secret_key")
 		if not key:
 			return
-		live = self.settings.environment == "Live"
 		is_test = key.startswith("FLWSECK_TEST")
 		if live == is_test:
 			frappe.throw(f"This is not a {'live' if live else 'test'} Flutterwave secret key "
@@ -55,11 +59,14 @@ class FlutterwaveGateway(PaymentGateway):
 		# Cheap authenticated read: list of banks for Kenya.
 		self.http("GET", "/v3/banks/KE", headers=self._auth())
 
-	def initiate(self, txn, *, return_url=None):
-		if not return_url:
+	def initiate(self, txn, *, return_url=None, embed=False):
+		public_key = (self.settings.public_key or "").strip()
+		if not return_url and not (embed and public_key):
 			raise ProviderError("A return URL is required for Flutterwave checkout")
 		if not txn.email:
 			raise ProviderError("Flutterwave needs the payer's email address")
+		if embed and public_key:
+			return self._inline(txn, public_key)
 		payload = {
 			"tx_ref": txn.name,
 			"amount": round(float(txn.amount), 2),
@@ -85,6 +92,27 @@ class FlutterwaveGateway(PaymentGateway):
 			"redirect_url": link,
 			"raw": {"status": data.get("status")},
 			"next_action": {"type": "redirect", "url": link},
+		}
+
+	def _inline(self, txn, public_key: str) -> dict:
+		"""Inline checkout (Flutterwave's modal over our page). The browser opens it
+		with our tx_ref; the amount is confirmed against the transaction when the
+		status is read back, so a tampered amount is never accepted."""
+		return {
+			"provider_request_id": txn.name,  # Flutterwave tracks us by tx_ref
+			"raw": {"mode": "inline"},
+			"next_action": {
+				"type": "flutterwave_inline", "public_key": public_key, "tx_ref": txn.name,
+				"amount": round(float(txn.amount), 2), "currency": (txn.currency or "").upper(),
+				"payment_options": (self.settings.payment_options or "").replace(" ", "") or None,
+				"customer": {"email": txn.email, "phone_number": txn.phone or "", "name": txn.get("payer_name") or ""},
+				"customizations": {
+					"title": frappe.db.get_single_value("Payment Integration Settings", "organization_name") or "Payment",
+					"description": (txn.description or "Payment")[:100],
+					"logo": self.settings.logo_url or None,
+				},
+				"meta": {"transaction": txn.name},
+			},
 		}
 
 	def query_status(self, txn):

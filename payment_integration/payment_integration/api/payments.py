@@ -50,7 +50,11 @@ def list_providers(**kwargs):
 @jwt_required
 @rate_limit(limit=10, seconds=60)
 def initiate(**kwargs):
-	"""POST {reference_doctype, reference_name, gateway?, phone?, return_url?, idempotency_key?}"""
+	"""POST {reference_doctype, reference_name, gateway?, phone?, return_url?, idempotency_key?, embed?}
+
+	embed=1: the payer stays on the page; next_action says how (iframe,
+	stripe_embedded, paypal_buttons, paystack_inline, flutterwave_inline,
+	stk_push), or falls back to redirect."""
 	try:
 		user = frappe.session.user
 		if user == "Guest":
@@ -73,6 +77,7 @@ def initiate(**kwargs):
 			email=details.get("email") or frappe.db.get_value("User", user, "email"),
 			idempotency_key=(data.get("idempotency_key") or "").strip() or None,
 			return_url=(data.get("return_url") or "").strip() or None,
+			embed=str(data.get("embed") or "").lower() in ("1", "true", "yes"),
 		)
 		return success_response(data=result)
 	except Exception as e:
@@ -164,5 +169,5 @@ def preview_receipt():
 	content = render_protected_pdf(
 		s.receipt_html or receipts.default_receipt_html(), receipts.sample_context(s),
 		title="Sample receipt", page_size=s.receipt_page_size or "A4", orientation="Portrait",
-		margin_mm=12 if s.receipt_margin_mm is None else s.receipt_margin_mm)
+		margin_mm=receipts.page_margin_mm(s))
 	send_pdf_response(content, "receipt-preview.pdf", inline=True)

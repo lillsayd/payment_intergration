@@ -61,6 +61,7 @@
   "stripe_sort_order",
   "stripe_section_credentials",
   "stripe_secret_key",
+  "stripe_publishable_key",
   "stripe_column_break_credentials",
   "stripe_webhook_secret",
   "stripe_statement_descriptor",
@@ -104,6 +105,7 @@
   "flutterwave_sort_order",
   "flutterwave_section_credentials",
   "flutterwave_secret_key",
+  "flutterwave_public_key",
   "flutterwave_secret_hash",
   "flutterwave_column_break_credentials",
   "flutterwave_payment_options",
@@ -502,6 +504,12 @@
    "description": "sk_test_… in Test mode, sk_live_… in Live mode (or a restricted key with Checkout Sessions write access)."
   },
   {
+   "fieldname": "stripe_publishable_key",
+   "fieldtype": "Data",
+   "label": "Publishable Key",
+   "description": "pk_test_… or pk_live_… Lets payers pay inside the page (Embedded Checkout). Leave blank to send them to Stripe's checkout page instead."
+  },
+  {
    "fieldname": "stripe_column_break_credentials",
    "fieldtype": "Column Break"
   },
@@ -766,6 +774,12 @@
    "description": "FLWSECK_TEST-… in Test mode, FLWSECK-… in Live mode."
   },
   {
+   "fieldname": "flutterwave_public_key",
+   "fieldtype": "Data",
+   "label": "Public Key",
+   "description": "FLWPUBK_TEST-… in Test mode, FLWPUBK-… in Live mode. Lets payers pay in a pop-up over the page. Leave blank to send them to Flutterwave's checkout page instead."
+  },
+  {
    "fieldname": "flutterwave_secret_hash",
    "fieldtype": "Password",
    "label": "Webhook Secret Hash",
@@ -1000,7 +1014,8 @@
    "fieldname": "receipt_margin_mm",
    "fieldtype": "Int",
    "label": "Page Margin (mm)",
-   "default": "12"
+   "default": "12",
+   "description": "Used for a custom Receipt HTML. The built-in design sets its own spacing."
   },
   {
    "fieldname": "section_org",
@@ -1052,7 +1067,7 @@
    "fieldtype": "Code",
    "label": "Receipt HTML",
    "options": "HTML",
-   "description": "Jinja HTML. Leave empty to use the built-in design. Available: {{ receipt_number }}, {{ issued_on }}, {{ paid_on }}, {{ payer_name }}, {{ payer_email }}, {{ payer_phone }}, {{ amount }} (formatted), {{ amount_value }}, {{ currency }}, {{ description }}, {{ provider }}, {{ payment_method }}, {{ provider_receipt }}, {{ transaction }}, {{ reference_doctype }}, {{ reference_name }}, {{ organization_name }}, {{ organization_address }}, {{ organization_email }}, {{ organization_phone }}, {{ tax_pin }}, {{ logo }} (image data URI), {{ footer }}."
+   "description": "Jinja HTML. Leave empty to use the built-in design. Available: {{ receipt_number }}, {{ issued_on }}, {{ paid_on }}, {{ payer_name }}, {{ payer_email }}, {{ payer_phone }}, {{ amount }} (formatted), {{ amount_value }}, {{ currency }}, {{ description }}, {{ provider }}, {{ payment_method }}, {{ provider_receipt }}, {{ transaction }}, {{ reference_doctype }}, {{ reference_name }}, {{ organization_name }}, {{ organization_address }}, {{ organization_email }}, {{ organization_phone }}, {{ tax_pin }}, {{ logo }} (image data URI), {{ footer }}, {{ organization_website }}, {{ tagline }}, and the site theme colours {{ theme.primary }}, {{ theme.band }}, {{ theme.strong }}, {{ theme.tint }}, {{ theme.soft }}, {{ theme.line }}, {{ theme.accent }}. The built-in design uses the site's branding (Main Site Settings) for anything left blank here."
   },
   {
    "fieldname": "receipt_footer",

@@ -74,7 +74,7 @@ class PesapalGateway(PaymentGateway):
 		self.settings.set_values({"ipn_id": ipn_id, "ipn_url": url})
 		return ipn_id
 
-	def initiate(self, txn, *, return_url=None):
+	def initiate(self, txn, *, return_url=None, embed=False):
 		if not return_url:
 			raise ProviderError("A return URL is required for Pesapal checkout")
 		ipn_id = self.register_ipn()
@@ -102,7 +102,9 @@ class PesapalGateway(PaymentGateway):
 			"provider_request_id": data["order_tracking_id"],
 			"redirect_url": data["redirect_url"],
 			"raw": data,
-			"next_action": {"type": "redirect", "url": data["redirect_url"]},
+			# Pesapal's checkout is built to run in an iframe; the return URL then
+			# loads inside it and tells the page the payer is done.
+			"next_action": {"type": "iframe" if embed else "redirect", "url": data["redirect_url"]},
 		}
 
 	def query_status(self, txn):

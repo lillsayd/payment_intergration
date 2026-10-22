@@ -666,3 +666,82 @@ class TestPayments(FrappeTestCase):
 			"reference": res["name"], "status": "abandoned", "amount": 150050, "currency": "KES"}})
 		self.assertEqual(payments.refresh_status(res["name"]), "Pending")
 
+
+	# ── on-page checkout (embed) ─────────────────────────────────────────
+	def _embed(self, gateway, currency, amount=49.99, **kw):
+		return payments.create_payment(amount=amount, currency=currency, gateway=gateway, reference_doctype="ToDo",
+									   reference_name=self.todo.name, payer="Administrator", email="a@example.com",
+									   description="Course fee", embed=True, **kw)
+
+	def test_pesapal_embed_is_an_iframe(self):
+		self._pesapal_routes()
+		res = self._embed(PESAPAL, "KES", 2500.5, return_url="http://localhost:3000/payments/embedded-return")
+		self.assertEqual(res["next_action"], {"type": "iframe",
+											   "url": "https://cybqa.pesapal.com/iframe?OrderTrackingId=otid-1"})
+
+	def test_stripe_embedded_checkout(self):
+		self._stripe_on()
+		# Without a publishable key Stripe can only redirect.
+		res = self._embed(STRIPE, "USD", return_url="http://localhost:3000/payments/return")
+		self.assertEqual(res["next_action"]["type"], "redirect")
+		frappe.db.set_value("Payment Transaction", res["name"], "creation", add_to_date(now_datetime(), minutes=-10))
+		gateway_fixtures.configure(STRIPE, {"publishable_key": "pk_test_pub"})
+		self.gw.on("/v1/checkout/sessions", data={"id": "cs_test_2", "client_secret": "cs_test_2_secret_x",
+												  "status": "open", "payment_status": "unpaid"})
+		res = self._embed(STRIPE, "USD")
+		self.assertEqual(res["next_action"], {"type": "stripe_embedded", "client_secret": "cs_test_2_secret_x",
+											   "publishable_key": "pk_test_pub"})
+		call = self.gw.last("/v1/checkout/sessions")
+		self.assertEqual((call["data"]["ui_mode"], call["data"]["redirect_on_completion"]), ("embedded", "never"))
+		self.assertNotIn("success_url", call["data"])
+		self.assertEqual(call["headers"]["Idempotency-Key"], f"checkout-embedded-{res['name']}")
+		with self.assertRaises(frappe.ValidationError):
+			gateway_fixtures.configure(STRIPE, {"environment": "Live", "publishable_key": "pk_test_pub"})
+
+	def test_paypal_buttons(self):
+		gateway_fixtures.configure(PAYPAL, {
+			"enabled": 1, "environment": "Sandbox", "currency": "USD", "client_id": "cid", "client_secret": "csec",
+			"webhook_id": "WH-1", "allowed_return_origins": "http://localhost:3000", "callback_ip_allowlist": ""})
+		self.gw.on("/v1/oauth2/token", data={"access_token": "pp-token", "expires_in": 32400})
+		self.gw.on("/v2/checkout/orders", data={"id": "ORDER2", "status": "CREATED", "links": []})
+		res = self._embed(PAYPAL, "USD")
+		self.assertEqual(res["next_action"]["type"], "paypal_buttons")
+		self.assertEqual((res["next_action"]["order_id"], res["next_action"]["client_id"]), ("ORDER2", "cid"))
+		call = self.gw.last("/v2/checkout/orders")
+		self.assertNotIn("return_url", call["json"]["payment_source"]["paypal"]["experience_context"])
+		self.assertEqual(call["headers"]["PayPal-Request-Id"], f"order-embedded-{res['name']}")
+
+	def test_paystack_inline(self):
+		self._pay_paystack()  # sets up the gateway and routes
+		frappe.db.delete("Payment Transaction", {"provider": PAYSTACK})
+		res = self._embed(PAYSTACK, "KES", 1500.5)
+		self.assertEqual(res["next_action"], {"type": "paystack_inline", "access_code": "xyz",
+											   "url": "https://checkout.paystack.com/xyz"})
+		self.assertNotIn("callback_url", self.gw.last("/transaction/initialize")["json"])
+
+	def test_flutterwave_inline_and_tampered_amount(self):
+		self._pay_flutterwave()
+		frappe.db.delete("Payment Transaction", {"provider": FLUTTERWAVE})
+		calls = self.gw.count("/v3/payments")
+		gateway_fixtures.configure(FLUTTERWAVE, {"public_key": "FLWPUBK_TEST-pub"})
+		res = self._embed(FLUTTERWAVE, "KES", 1500)
+		action = res["next_action"]
+		self.assertEqual((action["type"], action["public_key"], action["tx_ref"], action["amount"]),
+						 ("flutterwave_inline", "FLWPUBK_TEST-pub", res["name"], 1500))
+		self.assertEqual(self.gw.count("/v3/payments"), calls, "inline checkout starts in the browser")
+		# A payer who edits the amount in the browser is not marked paid.
+		self.gw.on("/v3/transactions/verify_by_reference", data={"status": "success", "data": {
+			"id": 7, "tx_ref": res["name"], "flw_ref": "FLW-1", "status": "successful", "amount": 1, "currency": "KES"}})
+		self.assertEqual(payments.refresh_status(res["name"]), "Pending")
+		self.assertIn("mismatch", frappe.db.get_value("Payment Transaction", res["name"], "failure_reason"))
+
+	def test_embedded_flags_and_resuming_a_pending_checkout(self):
+		gateway_fixtures.configure(STRIPE, {"enabled": 1, "currency": "USD", "secret_key": "sk_test_abc",
+											"webhook_secret": "whsec_test", "publishable_key": ""})
+		flags = {g["gateway"]: g["embedded"] for g in payments.enabled_gateways()}
+		self.assertEqual(flags, {DARAJA: True, PESAPAL: True, STRIPE: False})
+		self._pesapal_routes()
+		first = self._embed(PESAPAL, "KES", 2500.5, return_url="http://localhost:3000/payments/embedded-return")
+		again = self._embed(PESAPAL, "KES", 2500.5, return_url="http://localhost:3000/payments/embedded-return")
+		self.assertEqual(again["name"], first["name"])
+		self.assertEqual(again["next_action"], first["next_action"], "the second click reopens the same checkout")

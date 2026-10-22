@@ -24,6 +24,8 @@ from payment_integration.payment_integration.gateways.base import (  # noqa: F40
 SETTINGS = "Payment Integration Settings"
 
 # key -> metadata. `flow`: stk_push (prompt on phone) or redirect (hosted page).
+# `embed_key`: the public-key setting a redirect gateway needs to run on the
+# merchant page instead (None: it always can — iframe, popup or buttons).
 GATEWAYS = {
 	"Daraja": {
 		"prefix": "daraja",
@@ -53,6 +55,7 @@ GATEWAYS = {
 		"requires_phone": False,
 		"icon": "globe",
 		"adapter": "payment_integration.payment_integration.gateways.stripe.StripeGateway",
+		"embed_key": "publishable_key",
 		"docs": "https://docs.stripe.com/payments/checkout",
 	},
 	"PayPal": {
@@ -73,6 +76,7 @@ GATEWAYS = {
 		"requires_phone": False,
 		"icon": "zap",
 		"adapter": "payment_integration.payment_integration.gateways.flutterwave.FlutterwaveGateway",
+		"embed_key": "public_key",
 		"docs": "https://developer.flutterwave.com/docs",
 	},
 	"Paystack": {
